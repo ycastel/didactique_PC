@@ -57,37 +57,29 @@ st.markdown("*Outil de formation (INSPE / Formation continue) pour analyser les 
 
 with st.sidebar:
     st.header("⚙️ Contexte pédagogique")
-    options_niveau = (
-        "Collège (Cycle 4 : 5e, 4e, 3e)",
-        "Lycée Général (Seconde)",
-        "Lycée Général (Spécialité PC - 1ère / Terminale)",
-        "Lycée Technologique (STL / STI2D)"
-    )
+    options_niveau = list()
+    options_niveau.append("Collège (Cycle 4 : 5e, 4e, 3e)")
+    options_niveau.append("Lycée Général (Seconde)")
+    options_niveau.append("Lycée Général (Spécialité PC - 1ère / Terminale)")
+    options_niveau.append("Lycée Technologique (STL / STI2D)")
     niveau = st.selectbox("Niveau d'enseignement :", options_niveau)
     
-    options_support = (
-        "Exercice écrit / Évaluation sommative",
-        "Travaux Pratiques (TP) / Démarche expérimentale / ECE"
-    )
+    options_support = list()
+    options_support.append("Exercice écrit / Évaluation sommative")
+    options_support.append("Travaux Pratiques (TP) / Démarche expérimentale / ECE")
     type_activite = st.radio("Type de support :", options_support)
     
     st.divider()
     st.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", on_click=reinitialiser_application, use_container_width=True)
     
     st.divider()
-    st.info("""
-    **📚 Cadres didactiques mobilisés :**
-    - Compétences de la démarche scientifique (APP, ANA, REA, VAL, COM)
-    - Registres de représentation (Triangle de Johnstone / Modélisation)
-    - Malentendus socio-cognitifs (tâche vs enjeu de savoir)
-    - Charge cognitive et étayage gradué
-    """)
+    st.info("Cadres mobilisés : Compétences (APP, ANA, REA, VAL, COM), Triangle de Johnstone, Modélisation, Malentendus socio-cognitifs et Charge cognitive.")
 
-onglet_texte, onglet_pdf, onglet_image = st.tabs((
-    "✍️ Saisir un texte",
-    "📄 Importer un PDF (texte)",
-    "📸 Photo ou PDF scanné (Vision)"
-))
+noms_onglets = list()
+noms_onglets.append("✍️ Saisir un texte")
+noms_onglets.append("📄 Importer un PDF (texte)")
+noms_onglets.append("📸 Photo ou PDF scanné (Vision)")
+onglet_texte, onglet_pdf, onglet_image = st.tabs(noms_onglets)
 
 texte_saisi = ""
 texte_pdf = ""
@@ -119,14 +111,18 @@ with onglet_pdf:
             if texte_pdf:
                 st.success(f"✅ PDF lu ({len(lecteur.pages)} page(s)).")
                 with st.expander("Aperçu du texte extrait"):
-                    st.text(texte_pdf[:1500] + ("..." if len(texte_pdf) > 1500 else ""))
+                    st.text(texte_pdf[:1500])
             else:
-                st.warning("⚠️ Aucun texte sélectionnable détecté. Utilisez l'onglet « 📸 Photo ou PDF scanné » juste à côté.")
+                st.warning("⚠️ Aucun texte sélectionnable détecté. Utilisez l'onglet « 📸 Photo ou PDF scanné ».")
         except Exception as e:
             st.error(f"Erreur PDF : {e}")
 
 with onglet_image:
-    types_acceptes = ("png", "jpg", "jpeg", "pdf")
+    types_acceptes = list()
+    types_acceptes.append("png")
+    types_acceptes.append("jpg")
+    types_acceptes.append("jpeg")
+    types_acceptes.append("pdf")
     fichier_visuel = st.file_uploader(
         "Importez une photo (PNG, JPG) ou un PDF scanné (les 2 premières pages seront analysées) :",
         type=types_acceptes,
@@ -144,7 +140,7 @@ with onglet_image:
                     img_bytes = pix.tobytes("jpeg")
                     images_base64.append(base64.b64encode(img_bytes).decode("utf-8"))
                     compteur_pages += 1
-                st.success(f"✅ PDF scanné converti en image ({compteur_pages} page(s) prête(s) pour l'analyse visuelle).")
+                st.success(f"✅ PDF scanné converti en image ({compteur_pages} page(s) prête(s)).")
             else:
                 img_bytes = fichier_visuel.read()
                 images_base64.append(base64.b64encode(img_bytes).decode("utf-8"))
@@ -168,43 +164,31 @@ if lancer:
             try:
                 api_key = st.secrets.get("MISTRAL_API_KEY", "").strip()
                 
-                prompt_systeme = f"""Tu es un formateur expert et chercheur en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.
-Contexte : Niveau {niveau} | Type : {type_activite}.
-
-Ta mission est de produire une expertise didactique rigoureuse de la consigne ou du document fourni (ne résous jamais l'exercice). Structure impérativement ta réponse en 5 parties en Markdown :
-
-### 1. 🎯 Compétences cachées et « consignes-valises »
-Identifie les compétences de la démarche scientifique (S'approprier, Analyser/Raisonner, Réaliser, Valider, Communiquer) imbriquées implicitement dans une même question, ainsi que les verbes d'action à protocole caché (ex. : justifier, exploiter, vérifier, conclure).
-
-### 2. ⚛️ Ruptures de registres et modélisation
-Analyse les sauts implicites imposés à l'élève :
-- En chimie : passage non explicité entre les niveaux macroscopique, microscopique et symbolique (Triangle de Johnstone).
-- En physique : passage entre le monde des objets/mesures et le monde des modèles/lois mathématiques (Tiberghien), ou changement de registre (texte, schéma normalisé, graphique, équation).
-
-### 3. 🧪 Implicites expérimentaux et charge cognitive (TP / Évaluation)
-Repère les non-dits matériels (verrerie, réactifs, témoin, sécurité, incertitudes/chiffres significatifs) et les risques de surcharge cognitive (attention partagée entre manipulation et lecture, consignes ambiguës).
-
-### 4. 🧠 Malentendus socio-cognitifs (« Point de vue élève »)
-Décris 2 ou 3 malentendus probables chez un élève en difficulté (confusion entre la tâche matérielle à exécuter et l'enjeu de savoir visé, interprétation littérale, polysémie du lexique scientifique).
-
-### 5. 🪜 Gradation d'explicitation et question réflexive
-Propose trois réécritures graduées adaptées au niveau {niveau} :
-- **Niveau 1 (Tâche complexe / Ouverte)** : Formulation débarrassée des ambiguïtés langagières mais préservant l'autonomie de raisonnement.
-- **Niveau 2 (Étayage intermédiaire / Coup de pouce)** : Ajout d'indices sur les ressources ou la stratégie attendue.
-- **Niveau 3 (Explicitation maximale / Pas à pas)** : Décomposition en tâches élémentaires univoques avec critères de réussite visibles.
-
-Termine par une **Question réflexive** destinée au professeur/stagiaire pour interroger l'alignement entre sa consigne et son intention d'évaluation."""
+                lignes_prompt = list()
+                lignes_prompt.append("Tu es un formateur expert et chercheur en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.")
+                lignes_prompt.append(f"Contexte : Niveau {niveau} | Type : {type_activite}.")
+                lignes_prompt.append("Produis une expertise didactique rigoureuse de la consigne ou du document fourni (ne résous jamais l'exercice). Structure ta réponse en 5 parties en Markdown :")
+                lignes_prompt.append("### 1. 🎯 Compétences cachées et « consignes-valises »")
+                lignes_prompt.append("Identifie les compétences de la démarche scientifique (S'approprier, Analyser/Raisonner, Réaliser, Valider, Communiquer) imbriquées implicitement, ainsi que les verbes d'action à protocole caché (justifier, exploiter, vérifier, conclure).")
+                lignes_prompt.append("### 2. ⚛️ Ruptures de registres et modélisation")
+                lignes_prompt.append("Analyse les sauts implicites : en chimie entre macroscopique, microscopique et symbolique (Triangle de Johnstone) ; en physique entre objets/mesures et modèles/lois mathématiques (Tiberghien), ou changement de registre (texte, schéma, graphique, équation).")
+                lignes_prompt.append("### 3. 🧪 Implicites expérimentaux et charge cognitive (TP / Évaluation)")
+                lignes_prompt.append("Repère les non-dits matériels (verrerie, réactifs, témoin, sécurité, incertitudes) et les risques de surcharge cognitive (attention partagée entre manipulation et lecture).")
+                lignes_prompt.append("### 4. 🧠 Malentendus socio-cognitifs (« Point de vue élève »)")
+                lignes_prompt.append("Décris 2 ou 3 malentendus probables chez un élève en difficulté (confusion entre tâche matérielle et enjeu de savoir, interprétation littérale, polysémie).")
+                lignes_prompt.append("### 5. 🪜 Gradation d'explicitation et question réflexive")
+                lignes_prompt.append(f"Propose trois réécritures graduées adaptées au niveau {niveau} : Niveau 1 (Tâche complexe / Ouverte sans ambiguïté langagière), Niveau 2 (Étayage intermédiaire / Coup de pouce), Niveau 3 (Explicitation maximale / Pas à pas). Termine par une Question réflexive pour l'enseignant.")
+                prompt_systeme = "\n\n".join(lignes_prompt)
 
                 url_api = "https://" + "api.mistral.ai" + "/v1/chat/completions"
+
+                messages_api = list()
+                msg_sys = {"role": "system", "content": prompt_systeme}
+                messages_api.append(msg_sys)
 
                 if images_base64:
                     contenu_utilisateur = list()
                     contenu_utilisateur.append({"type": "text", "text": "Analyse les implicites didactiques des consignes présentes sur ce document :"})
                     for img_b64 in images_base64:
-                        contenu_utilisateur.append({
-                            "type": "image_url",
-                            "image_url": f"data:image/jpeg;base64,{img_b64}"
-                        })
-                    messages_api = (
-                        {"role": "system", "content": prompt_systeme},
-                        {"role": "user", "content": contenu_utilisateur}
+                        contenu_utilisateur.append({"type": "image_url", "image_url": f"data:image/jpeg;base64,{img_b64}"})
+                    msg_user = {"role": "user", "content": contenu_utilisateur}
