@@ -7,7 +7,6 @@ import re
 
 st.set_page_config(page_title="Didactique PC - Implicites", page_icon="🔬", layout="wide")
 
-# Initialisation de la mémoire de session
 if "analyse_resultat" not in st.session_state:
     st.session_state.analyse_resultat = None
 if "dernier_contexte" not in st.session_state:
@@ -71,7 +70,7 @@ with st.sidebar:
     )
     
     st.divider()
-    st.button("🔄 Soumettre une autre analyse", on_click=reinitialiser_application, use_container_width=True)
+    st.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", on_click=reinitialiser_application, use_container_width=True)
     
     st.divider()
     st.info("""
@@ -86,7 +85,6 @@ onglet_texte, onglet_pdf = st.tabs(["✍️ Saisir ou coller un texte", "📄 Im
 texte_saisi = ""
 texte_pdf = ""
 
-# L'utilisation de key dynamique permet de vider complètement les champs lors du clic sur "Soumettre une autre analyse"
 with onglet_texte:
     texte_saisi = st.text_area(
         "Collez ici la consigne ou l'extrait de fiche TP à analyser :",
@@ -121,14 +119,13 @@ with onglet_pdf:
 
 consigne_finale = texte_pdf if texte_pdf else texte_saisi.strip()
 
-# Boutons d'action côte à côte
-col_btn1, col_btn2 = st.columns([2, 1])
+col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
     lancer = st.button("🔍 Analyser les implicites didactiques", type="primary", use_container_width=True)
 
 with col_btn2:
-    st.button("🔄 Nouvelle analyse", on_click=reinitialiser_application, use_container_width=True)
+    st.button("🔄 Nouvelle analyse", key="btn_reset_haut", on_click=reinitialiser_application, use_container_width=True)
 
 if lancer:
     if not consigne_finale:
@@ -140,7 +137,7 @@ if lancer:
                 
                 prompt_systeme = f"""Tu es un formateur expert en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.
 Contexte : Niveau {niveau} | Type : {type_activite}.
-Analyse uniquement la formulation des consignes fournies (ne résous pas l'exercice) en 4 parties claires en Markdown :
+Analyse uniquement la formulation des consignes fournie (ne résous pas l'exercice) en 4 parties claires en Markdown :
 
 ### 1. 🕵️ Diagnostic des implicites
 - **Implicites méthodologiques** (verbes d'action à protocole caché : justifier, exploiter, vérifier...).
@@ -237,3 +234,4 @@ if st.session_state.analyse_resultat:
         )
         
     with col3:
+        st.button("🔄 Soumettre une autre analyse", key="btn_reset_bas", on_click=reinitialiser_application, use_container_width=True)
