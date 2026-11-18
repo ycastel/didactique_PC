@@ -71,8 +71,10 @@ Donne 2 ou 3 exemples concrets d'erreurs ou de blocages probables d'un élève e
 ### 4. 💡 Question réflexive pour le formateur / stagiaire
 Termine par une question courte pour interroger l'intention pédagogique de l'enseignant."""
 
+                url_api = "https://" + "api.mistral.ai" + "/v1/chat/completions"
+
                 response = requests.post(
-                    "https://mistral.ai",
+                    url_api,
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json"
@@ -89,7 +91,7 @@ Termine par une question courte pour interroger l'intention pédagogique de l'en
                 
                 if response.status_code == 200:
                     data = response.json()
-                    premier_choix = data["choices"][0]
+                    premier_choix = next(iter(data["choices"]))
                     st.session_state.analyse_resultat = premier_choix["message"]["content"]
                     st.session_state.dernier_contexte = {
                         "niveau": niveau,
