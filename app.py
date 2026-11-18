@@ -45,41 +45,6 @@ def generer_docx(contexte, texte_analyse):
     except Exception:
         return None
 
-def extraire_contenu(mode, cle_txt, cle_pdf, cle_img):
-    texte_out = ""
-    images_out = list()
-    if mode == "✍️ Texte":
-        texte_out = st.session_state.get(cle_txt, "").strip()
-    if mode == "📄 PDF (texte)":
-        f_pdf = st.session_state.get(cle_pdf)
-        if f_pdf is not None:
-            f_pdf.seek(0)
-            lecteur = PdfReader(f_pdf)
-            pages = list()
-            for p in lecteur.pages:
-                t = p.extract_text()
-                if t: pages.append(t)
-            texte_out = "\n".join(pages).strip()
-    if mode == "📸 Image ou PDF scanné":
-        f_visuel = st.session_state.get(cle_img)
-        if f_visuel is not None:
-            f_visuel.seek(0)
-            if f_visuel.type == "application/pdf":
-                try:
-                    import fitz
-                    doc_fitz = fitz.open(stream=f_visuel.read(), filetype="pdf")
-                    c = 0
-                    for page_fitz in doc_fitz:
-                        if c >= 2: break
-                        pix = page_fitz.get_pixmap(dpi=150)
-                        images_out.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
-                        c += 1
-                except Exception as e:
-                    st.error(f"Erreur PDF scanné : {e}")
-            if f_visuel.type != "application/pdf":
-                images_out.append(base64.b64encode(f_visuel.read()).decode("utf-8"))
-    return texte_out, images_out
-
 def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_images):
     lignes = list()
     lignes.append("Tu es un formateur expert en didactique de la physique-chimie (INSPE / Master MEEF et formation continue).")
@@ -130,23 +95,6 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
     except Exception as e:
         return False, f"Erreur de connexion : {e}"
 
-def lancer_traitement(mode, cle_txt, cle_pdf, cle_img, niv, supp):
-    texte_final, images_finales = extraire_contenu(mode, cle_txt, cle_pdf, cle_img)
-    cle_api = st.secrets.get("MISTRAL_API_KEY", "").strip()
-    if not texte_final and not images_finales:
-        st.warning("⚠️ Aucun contenu détecté. Vérifiez votre saisie ou votre fichier.")
-        return
-    if not cle_api:
-        st.error("⚠️ Clé MISTRAL_API_KEY introuvable dans les Secrets.")
-        return
-    with st.spinner("Rédaction de l'expertise didactique en cours..."):
-        succes, resultat = interroger_mistral(cle_api, niv, supp, texte_final, images_finales)
-    if succes:
-        st.session_state.analyse_resultat = resultat
-        st.session_state.dernier_contexte = {"niveau": niv, "type": supp, "date": datetime.now().strftime("%d/%m/%Y à %H:%M")}
-    if not succes:
-        st.error(resultat)
-
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 st.markdown("*Outil de formation (INSPE / Formation continue) pour repérer les non-dits des consignes et ajuster son étayage.*")
 
@@ -156,11 +104,61 @@ type_activite = st.sidebar.radio("Type de support :", ("Exercice écrit / Évalu
 st.sidebar.divider()
 st.sidebar.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", on_click=reinitialiser_application, use_container_width=True)
 
-mode_saisie = st.radio("Mode d'importation :", ("✍️ Texte", "📄 PDF (texte)", "📸 Image ou PDF scanné"), horizontal=True)
+cle_txt = f"txt_{st.session_state.compteur_reset}"
+cle_fich = f"fich_{st.session_state.compteur_reset}"
 
-cle_widget_texte = f"txt_{st.session_state.compteur_reset}"
-cle_widget_pdf = f"pdf_{st.session_state.compteur_reset}"
-cle_widget_img = f"img_{st.session_state.compteur_reset}"
+texte_saisi = st.text_area("1. Saisissez ou collez une consigne :", height=130, key=cle_txt, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole...")
+fichier_charge = st.file_uploader("2. OU importez un fichier (PDF, PNG, JPG) :", key=cle_fich)
 
-if mode_saisie == "✍️ Texte": st.text_area("Collez ici la consigne ou l'extrait de fiche TP :", height=140, key=cle_widget_texte, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole...")
-if mode_saisie == "📄 PDF (texte)": st.file_uploader("Déposez votre sujet ou fiche de TP (PDF) :", type="pdf", key=cle_widget_pdf)
+col_btn1, col_btn2 = st.columns(2)
+lancer = col_btn1.button("🔍 Lancer l'expertise didactique", type="primary", use_container_width=True)
+col_btn2.button("🔄 Nouvelle analyse", key="btn_reset_haut", on_click=reinitialiser_application, use_container_width=True)
+
+if lancer:
+    texte_final = texte_saisi.strip()
+    images_finales = list()
+    if fichier_charge is not None:
+        fichier_charge.seek(0)
+        nom_fichier = fichier_charge.name.lower()
+        if nom_fichier.endswith(".pdf"):
+            lecteur = PdfReader(fichier_charge)
+            pages = list()
+            for p in lecteur.pages:
+                t = p.extract_text()
+                if t: pages.append(t)
+            texte_extrait = "\n".join(pages).strip()
+            if texte_extrait: texte_final = texte_extrait
+            if not texte_extrait:
+                try:
+                    import fitz
+                    fichier_charge.seek(0)
+                    doc_fitz = fitz.open(stream=fichier_charge.read(), filetype="pdf")
+                    c = 0
+                    for page_fitz in doc_fitz:
+                        if c >= 2: break
+                        pix = page_fitz.get_pixmap(dpi=150)
+                        images_finales.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
+                        c += 1
+                except Exception as e:
+                    st.error(f"PDF scanné non lisible ({e}). Importez une image JPG ou PNG.")
+        if not nom_fichier.endswith(".pdf"):
+            images_finales.append(base64.b64encode(fichier_charge.read()).decode("utf-8"))
+
+    cle_api = st.secrets.get("MISTRAL_API_KEY", "").strip()
+    if not texte_final and not images_finales:
+        st.warning("⚠️ Veuillez saisir un texte ou importer un fichier avant de lancer l'analyse.")
+    if (texte_final or images_finales) and cle_api:
+        with st.spinner("Rédaction de l'expertise didactique en cours..."):
+            succes, resultat = interroger_mistral(cle_api, niveau, type_activite, texte_final, images_finales)
+        if succes:
+            st.session_state.analyse_resultat = resultat
+            st.session_state.dernier_contexte = {"niveau": niveau, "type": type_activite, "date": datetime.now().strftime("%d/%m/%Y à %H:%M")}
+        if not succes:
+            st.error(resultat)
+
+if st.session_state.analyse_resultat:
+    st.divider()
+    ctx = st.session_state.dernier_contexte
+    horodatage = datetime.now().strftime('%Y%m%d_%H%M')
+    contenu_md = f"# Expertise Didactique - Physique-Chimie\n- **Date :** {ctx.get('date', '')}\n- **Niveau :** {ctx.get('niveau', '')}\n- **Support :** {ctx.get('type', '')}\n\n---\n\n{st.session_state.analyse_resultat}"
+    st.subheader("📥 Exporter le diagnostic et les conseils")
