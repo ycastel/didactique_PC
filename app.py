@@ -72,21 +72,19 @@ st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 st.markdown("*Outil de formation (INSPE / Master M2E / Formation continue) fondé sur la didactique des sciences et les travaux de l'IGÉSR.*")
 
 with st.expander("ℹ️ Mode d'emploi, posture didactique et cadres mobilisés (Cliquez pour ouvrir)"):
-    st.markdown("""
-    ### 🎯 Posture de l'outil : éclairer les choix, sans prescrire
-    Expliciter une consigne ne signifie **pas** baisser le niveau d'exigence ni « mâcher le travail » (ce qui relèverait de l'**effet Topaze** décrit par Guy Brousseau). L'objectif est de distinguer les **obstacles cognitifs légitimes** (ce que l'on veut réellement faire chercher ou évaluer) des **implicites parasites** (ambiguïtés langagières, sauts de registres non signalés, non-dits matériels) qui pénalisent les élèves les plus fragiles.
-    
-    ### 🛠️ Différenciation selon le support choisi
-    - **Mode Exercice / Évaluation :** Cible le contrat didactique d'évaluation (Brousseau), les verbes opérateurs à protocole caché, l'exploitation de documents et les attentes rédactionnelles implicites (expression littérale, unités, chiffres significatifs).
-    - **Mode TP / Démarche expérimentale :** Cible les gestes et matériels non nommés, le rôle du témoin, la sécurité, la surcharge cognitive d'attention partagée à la paillasse (Sweller) et l'équilibre entre « TP-recette » et investigation ouverte.
-    
-    ### 📚 Cadres théoriques et institutionnels intégrés
-    - **Inspection Générale (IGÉSR) & Bulletins Officiels (BO) :** Enseignement explicite, clarté cognitive et conformité aux attendus des programmes nationaux.
-    - **Guy Brousseau :** Contrat didactique et vigilance face à l'effet Topaze (glissement vers un guidage mécanique).
-    - **Gaston Bachelard :** Obstacles épistémologiques, sens commun et ruptures lexicales.
-    - **Alex Johnstone & Andrée Tiberghien :** Articulation macroscopique / microscopique / symbolique (chimie) et objets / modèles (physique).
-    - **Élisabeth Bautier & Patrick Rayou / John Sweller :** Malentendus socio-cognitifs et gestion de la charge cognitive.
-    """)
+    st.markdown(
+        "### 🎯 Posture de l'outil : éclairer les choix, sans prescrire\n"
+        "Expliciter une consigne ne signifie **pas** baisser le niveau d'exigence ni « mâcher le travail » (ce qui relèverait de l'**effet Topaze** décrit par Guy Brousseau). L'objectif est de distinguer les **obstacles cognitifs légitimes** (ce que l'on veut réellement faire chercher ou évaluer) des **implicites parasites** (ambiguïtés langagières, sauts de registres non signalés, non-dits matériels) qui pénalisent les élèves les plus fragiles.\n\n"
+        "### 🛠️ Différenciation selon le support choisi\n"
+        "- **Mode Exercice / Évaluation :** Cible le contrat didactique d'évaluation (Brousseau), les verbes opérateurs à protocole caché, l'exploitation de documents et les attentes rédactionnelles implicites (expression littérale, unités, chiffres significatifs).\n"
+        "- **Mode TP / Démarche expérimentale :** Cible les gestes et matériels non nommés, le rôle du témoin, la sécurité, la surcharge cognitive d'attention partagée à la paillasse (Sweller) et l'équilibre entre « TP-recette » et investigation ouverte.\n\n"
+        "### 📚 Cadres théoriques et institutionnels intégrés\n"
+        "- **Inspection Générale (IGÉSR) & Bulletins Officiels (BO) :** Enseignement explicite, clarté cognitive et conformité aux attendus des programmes nationaux.\n"
+        "- **Guy Brousseau :** Contrat didactique et vigilance face à l'effet Topaze (glissement vers un guidage mécanique).\n"
+        "- **Gaston Bachelard :** Obstacles épistémologiques, sens commun et ruptures lexicales.\n"
+        "- **Alex Johnstone & Andrée Tiberghien :** Articulation macroscopique / microscopique / symbolique (chimie) et objets / modèles (physique).\n"
+        "- **Élisabeth Bautier & Patrick Rayou / John Sweller :** Malentendus socio-cognitifs et gestion de la charge cognitive."
+    )
 
 options_niveaux = (
     "Collège (Cycle 4)",
@@ -131,11 +129,13 @@ if lancer:
         st.stop()
 
     if support == "Exercice / Évaluation":
-        focus_support = """SPÉCIFICITÉ ÉVALUATION ÉCRITE / EXERCICE :
-        - Analyse le contrat didactique d'évaluation (Guy Brousseau) : ce que le professeur attend implicitement dans la rédaction (relation littérale avant le calcul, justification normée, conversion d'unités, chiffres significatifs, lien avec un document fourni).
-        - Repère les verbes opérateurs à protocole caché (« déduire », « commenter », « exploiter », « montrer que ») et les questions à tiroirs où l'implicite d'une étape bloque la suivante.
-        - Dans les 3 niveaux de réécriture, propose des formulations adaptées à un sujet de devoir écrit ou d'entraînement."""
+        focus_support = (
+            "SPÉCIFICITÉ ÉVALUATION ÉCRITE / EXERCICE :\n"
+            "- Analyse le contrat didactique d'évaluation (Guy Brousseau) : ce que le professeur attend implicitement dans la rédaction (relation littérale avant le calcul, justification normée, conversion d'unités, chiffres significatifs, lien avec un document fourni).\n"
+            "- Repère les verbes opérateurs à protocole caché (« déduire », « commenter », « exploiter », « montrer que ») et les questions à tiroirs où l'implicite d'une étape bloque la suivante.\n"
+            "- Dans les 3 niveaux de réécriture, propose des formulations adaptées à un sujet de devoir écrit ou d'entraînement."
+        )
     else:
-        focus_support = """SPÉCIFICITÉ TP / DÉMARCHE EXPÉRIMENTALE / ECE :
-        - Analyse les implicites matériels et gestuels : verrerie ou appareil de mesure non nommé, réglage de calibre, nécessité d'un témoin ou d'un blanc, précautions de sécurité non rappelées, gestion des incertitudes de mesure.
-        - Évalue la charge cognitive d'attention partagée (John Sweller) : l'élève doit-il lire une consigne dense tout en manipulant ?
+        focus_support = (
+            "SPÉCIFICITÉ TP / DÉMARCHE EXPÉRIMENTALE / ECE :\n"
+            "- Analyse les implicites matériels et gestuels : verrerie ou appareil de mesure non nommé, réglage de calibre, nécessité d'un témoin ou d'un blanc, précautions de sécurité non rappelées, gestion des incertitudes de mesure.\n"
