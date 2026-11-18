@@ -89,7 +89,7 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
         messages_api.append(dict(role="user", content=texte_consigne[:12000]))
 
     url_api = "https://" + "api.mistral.ai" + "/v1/chat/completions"
-    headers_api = dict(Authorization="Bearer " + api_key, Content-Type="application/json")
+    headers_api = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
     payload = dict(model=modele, messages=messages_api, temperature=0.3)
 
     try:
