@@ -13,13 +13,13 @@ if "dernier_contexte" not in st.session_state:
     st.session_state.dernier_contexte = {}
 
 def nettoyer_texte_xml(texte):
-    # Supprime les caractères de contrôle invisibles des PDF incompatibles avec Word
+    # Supprime les caractères de contrôle invisibles incompatibles avec Word
     return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', texte)
 
 def generer_docx(contexte, texte_analyse):
     from docx import Document
     doc = Document()
-    doc.add_heading("Fiche d'Analyse Didactique - Physique-Chimie", level=1)
+    doc.add_heading("Diagnostic Didactique et Conseils d'Explicitation - Physique-Chimie", level=1)
     
     p_meta = doc.add_paragraph()
     p_meta.add_run("Date : ").bold = True
@@ -29,15 +29,11 @@ def generer_docx(contexte, texte_analyse):
     p_meta.add_run("Support : ").bold = True
     p_meta.add_run(f"{contexte.get('type', '')}")
     
-    doc.add_heading("Consigne / Document analysé", level=2)
-    doc.add_paragraph(nettoyer_texte_xml(contexte.get("consigne", "")))
-    
-    doc.add_heading("Diagnostic des implicites et conseils d'explicitation", level=2)
     texte_propre = nettoyer_texte_xml(texte_analyse)
     for ligne in texte_propre.split("\n"):
         ligne_propre = ligne.strip()
         if ligne_propre.startswith("### "):
-            doc.add_heading(ligne_propre.replace("### ", ""), level=3)
+            doc.add_heading(ligne_propre.replace("### ", ""), level=2)
         elif ligne_propre.startswith("- "):
             doc.add_paragraph(ligne_propre.replace("- ", "").replace("**", ""), style="List Bullet")
         elif ligne_propre:
@@ -119,7 +115,7 @@ if st.button("🔍 Analyser les implicites didactiques", type="primary"):
                 
                 prompt_systeme = f"""Tu es un formateur expert en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.
 Contexte : Niveau {niveau} | Type : {type_activite}.
-Analyse uniquement la formulation des consignes fournie (ne résous pas l'exercice) en 4 parties claires en Markdown :
+Analyse uniquement la formulation des consignes fournies (ne résous pas l'exercice) en 4 parties claires en Markdown :
 
 ### 1. 🕵️ Diagnostic des implicites
 - **Implicites méthodologiques** (verbes d'action à protocole caché : justifier, exploiter, vérifier...).
@@ -164,7 +160,6 @@ Termine par une question courte pour interroger l'intention pédagogique de l'en
                     st.session_state.dernier_contexte = {
                         "niveau": niveau,
                         "type": type_activite,
-                        "consigne": consigne_finale,
                         "date": datetime.now().strftime("%d/%m/%Y à %H:%M")
                     }
                 else:
@@ -198,13 +193,10 @@ if st.session_state.analyse_resultat:
             st.warning(f"Export Word indisponible ({e}). Utilisez l'export Texte ci-contre.")
         
     with col2:
-        contenu_md = f"""# Fiche d'Analyse Didactique - Physique-Chimie
+        contenu_md = f"""# Diagnostic Didactique et Conseils d'Explicitation - Physique-Chimie
 - **Date :** {ctx.get('date', '')}
 - **Niveau :** {ctx.get('niveau', '')}
 - **Support :** {ctx.get('type', '')}
-
-## Consigne / Document analysé
-> {ctx.get('consigne', '')}
 
 ---
 
