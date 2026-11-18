@@ -9,9 +9,11 @@ import io
 st.set_page_config(page_title="Didactique PC", page_icon="🔬", layout="wide")
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 
-with st.expander("ℹ️ Mode d'emploi et cadres théoriques (IGÉSR, Bachelard, Johnstone, Brousseau)"):
-    st.write("Cet outil analyse les implicites des consignes (exercices et TP) en identifiant les compétences officielles du programme engagées, en distinguant les prérequis légitimes du BO des implicites parasites, tout en veillant à éviter l'effet Topaze (guidage mécanique). Il propose 3 niveaux d'étayage exportables en Word.")
+with st.expander("ℹ️ Mode d'emploi et cadres théoriques"):
+    st.write("Choisissez votre profil dans le menu de gauche : un mode **Pratique de classe** (synthétique et directement utilisable pour préparer un cours ou un TP) ou un mode **Analyse approfondie** (mobilisant explicitement les cadres de la recherche en didactique et de l'IGÉSR).")
 
+mode_profil = st.sidebar.radio("Public / Niveau de détail :", ("⚡ Pratique de classe (Synthétique)", "🎓 Analyse approfondie (Formation / INSPE)"))
+st.sidebar.divider()
 niveau = st.sidebar.selectbox("Niveau :", ("Collège (Cycle 4)", "Lycée Général (Seconde)", "Lycée Général (Spécialité PC)", "Lycée Technologique (STL / STI2D)"))
 support = st.sidebar.radio("Support :", ("Exercice / Évaluation", "TP / Démarche expérimentale / ECE"))
 
@@ -19,7 +21,7 @@ texte = st.text_area("1. Collez une consigne :", height=120, placeholder="Exempl
 fichier = st.file_uploader("2. OU importez un fichier (PDF, PNG, JPG) :")
 
 col1, col2 = st.columns(2)
-lancer = col1.button("🔍 Lancer l'analyse didactique", type="primary", use_container_width=True)
+lancer = col1.button("🔍 Lancer l'analyse", type="primary", use_container_width=True)
 if col2.button("🔄 Nouvelle analyse", use_container_width=True):
     st.rerun()
 
@@ -47,7 +49,11 @@ if lancer:
         st.stop()
 
     api_key = st.secrets["MISTRAL_API_KEY"].strip()
-    prompt = f"Tu es un formateur en didactique de la physique-chimie (INSPE / formation continue). Pour le niveau {niveau} et le support {support}, analyse la consigne fournie sans jamais résoudre l'exercice et sans juger l'enseignant : distingue les prérequis légitimes du programme (BO) des implicites parasites. Rédige des paragraphes fluides et nuancés en citant les mots exacts de la consigne. Structure en 6 parties Markdown : ### 1. Compétences officielles du programme engagées (précise exactement quelles compétences du programme de {niveau} sont sollicitées par cette consigne — au Cycle 4 : Pratiquer des démarches scientifiques, Concevoir/créer/réaliser, S'approprier des outils, Pratiquer des langages ; au Lycée : S'approprier APP, Analyser/Raisonner ANA, Réaliser REA, Valider VAL, Communiquer COM — en justifiant brièvement) ; ### 2. Clarté cognitive et cadre IGÉSR (transparence des procédures et critères de réussite) ; ### 3. Obstacles épistémologiques (Gaston Bachelard) et ruptures de registres (macroscopique/microscopique/symbolique d'Alex Johnstone ou objets/modèles d'Andrée Tiberghien) ; ### 4. Contrat didactique (Guy Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) adaptés au support {support} ; ### 5. Gradation d'explicitation en 3 niveaux pour {niveau} (Niveau 1 : ouverte clarifiée ; Niveau 2 : étayage intermédiaire ; Niveau 3 : pas à pas, en signalant le risque d'effet Topaze) ; ### 6. Nuances, contre-arguments légitimes (quand la consigne initiale est pertinente) et question réflexive."
+
+    if "Pratique" in mode_profil:
+        prompt = f"Tu es un formateur pragmatique en physique-chimie. Tu t'adresses à un enseignant qui prépare sa classe de {niveau} (support : {support}). Sois concis, concret, bienveillant et évite le jargon théorique lourd (pas de citations d'auteurs sauf nécessité). Ne résous jamais l'exercice. Structure ta réponse en 3 parties courtes et percutantes en Markdown : ### 1. L'essentiel en un coup d'œil (Compétences du programme de {niveau} sollicitées et les 2 ou 3 principaux implicites qui risquent de bloquer les élèves, en citant les mots exacts de la consigne) ; ### 2. Ce que l'élève risque de faire ou de comprendre de travers (en 3 lignes très concrètes) ; ### 3. Trois propositions de reformulation prêtes à l'emploi (Version A : ouverte mais sans ambiguïté ; Version B : avec coup de pouce méthodologique ; Version C : guidée pas à pas, tout en évitant de donner la solution)."
+    else:
+        prompt = f"Tu es un formateur en didactique de la physique-chimie (INSPE / formation continue). Pour le niveau {niveau} et le support {support}, analyse la consigne fournie sans jamais résoudre l'exercice et sans juger l'enseignant : distingue les prérequis légitimes du programme (BO) des implicites parasites. Rédige des paragraphes fluides et nuancés en citant les mots exacts de la consigne. Structure en 6 parties Markdown : ### 1. Compétences officielles du programme engagées (précise exactement quelles compétences du programme de {niveau} sont sollicitées par cette consigne — au Cycle 4 : Pratiquer des démarches scientifiques, Concevoir/créer/réaliser, S'approprier des outils, Pratiquer des langages ; au Lycée : S'approprier APP, Analyser/Raisonner ANA, Réaliser REA, Valider VAL, Communiquer COM — en justifiant brièvement) ; ### 2. Clarté cognitive et cadre IGÉSR (transparence des procédures et critères de réussite) ; ### 3. Obstacles épistémologiques (Gaston Bachelard) et ruptures de registres (macroscopique/microscopique/symbolique d'Alex Johnstone ou objets/modèles d'Andrée Tiberghien) ; ### 4. Contrat didactique (Guy Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) adaptés au support {support} ; ### 5. Gradation d'explicitation en 3 niveaux pour {niveau} (Niveau 1 : ouverte clarifiée ; Niveau 2 : étayage intermédiaire ; Niveau 3 : pas à pas, en signalant le risque d'effet Topaze) ; ### 6. Nuances, contre-arguments légitimes (quand la consigne initiale est pertinente) et question réflexive."
 
     messages = list()
     messages.append({"role": "system", "content": prompt})
@@ -62,7 +68,7 @@ if lancer:
         modele = "mistral-small-latest"
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
-    with st.spinner("Analyse didactique en cours..."):
+    with st.spinner("Analyse en cours..."):
         url = "https://" + "api.mistral.ai" + "/v1/chat/completions"
         rep = requests.post(
             url,
