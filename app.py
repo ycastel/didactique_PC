@@ -2,8 +2,8 @@ import streamlit as st
 import requests
 from datetime import datetime
 from pypdf import PdfReader
-from docx import Document
 import io
+import re
 
 st.set_page_config(page_title="Didactique PC - Implicites", page_icon="🔬", layout="wide")
 
@@ -12,7 +12,12 @@ if "analyse_resultat" not in st.session_state:
 if "dernier_contexte" not in st.session_state:
     st.session_state.dernier_contexte = {}
 
+def nettoyer_texte_xml(texte):
+    # Supprime les caractères de contrôle invisibles des PDF incompatibles avec Word
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', texte)
+
 def generer_docx(contexte, texte_analyse):
+    from docx import Document
     doc = Document()
     doc.add_heading("Fiche d'Analyse Didactique - Physique-Chimie", level=1)
     
@@ -25,10 +30,11 @@ def generer_docx(contexte, texte_analyse):
     p_meta.add_run(f"{contexte.get('type', '')}")
     
     doc.add_heading("Consigne / Document analysé", level=2)
-    doc.add_paragraph(contexte.get("consigne", ""))
+    doc.add_paragraph(nettoyer_texte_xml(contexte.get("consigne", "")))
     
     doc.add_heading("Diagnostic des implicites et conseils d'explicitation", level=2)
-    for ligne in texte_analyse.split("\n"):
+    texte_propre = nettoyer_texte_xml(texte_analyse)
+    for ligne in texte_propre.split("\n"):
         ligne_propre = ligne.strip()
         if ligne_propre.startswith("### "):
             doc.add_heading(ligne_propre.replace("### ", ""), level=3)
@@ -69,7 +75,6 @@ with st.sidebar:
     3. Téléchargez la fiche d'analyse en Word ou Markdown pour vos préparations.
     """)
 
-# Choix du mode de saisie : Texte direct ou Fichier PDF
 onglet_texte, onglet_pdf = st.tabs(["✍️ Saisir ou coller un texte", "📄 Importer un fichier PDF"])
 
 texte_saisi = ""
@@ -102,7 +107,6 @@ with onglet_pdf:
         except Exception as e:
             st.error(f"Erreur lors de la lecture du PDF : {e}")
 
-# On privilégie le texte du PDF s'il a été chargé, sinon le texte saisi
 consigne_finale = texte_pdf if texte_pdf else texte_saisi.strip()
 
 if st.button("🔍 Analyser les implicites didactiques", type="primary"):
@@ -115,7 +119,7 @@ if st.button("🔍 Analyser les implicites didactiques", type="primary"):
                 
                 prompt_systeme = f"""Tu es un formateur expert en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.
 Contexte : Niveau {niveau} | Type : {type_activite}.
-Analyse uniquement la formulation des consignes fournies (ne résous pas l'exercice) en 4 parties claires en Markdown :
+Analyse uniquement la formulation des consignes fournie (ne résous pas l'exercice) en 4 parties claires en Markdown :
 
 ### 1. 🕵️ Diagnostic des implicites
 - **Implicites méthodologiques** (verbes d'action à protocole caché : justifier, exploiter, vérifier...).
@@ -170,7 +174,6 @@ Termine par une question courte pour interroger l'intention pédagogique de l'en
             except Exception as e:
                 st.error(f"Erreur technique : {e}")
 
-# Affichage du diagnostic, des conseils et des deux boutons d'exportation
 if st.session_state.analyse_resultat:
     st.divider()
     st.markdown(st.session_state.analyse_resultat)
@@ -183,13 +186,16 @@ if st.session_state.analyse_resultat:
     col1, col2 = st.columns(2)
     
     with col1:
-        fichier_word = generer_docx(ctx, st.session_state.analyse_resultat)
-        st.download_button(
-            label="📘 Télécharger au format Word (.docx)",
-            data=fichier_word,
-            file_name=f"analyse_implicites_PC_{horodatage}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+        try:
+            fichier_word = generer_docx(ctx, st.session_state.analyse_resultat)
+            st.download_button(
+                label="📘 Télécharger au format Word (.docx)",
+                data=fichier_word,
+                file_name=f"analyse_implicites_PC_{horodatage}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        except Exception as e:
+            st.warning(f"Export Word indisponible ({e}). Utilisez l'export Texte ci-contre.")
         
     with col2:
         contenu_md = f"""# Fiche d'Analyse Didactique - Physique-Chimie
