@@ -24,29 +24,65 @@ def nettoyer_texte_xml(texte):
     return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', texte)
 
 def generer_docx(contexte, texte_analyse):
-    from docx import Document
-    doc = Document()
-    doc.add_heading("Expertise Didactique et Conseils d'Explicitation - Physique-Chimie", level=1)
-    p_meta = doc.add_paragraph()
-    p_meta.add_run("Date : ").bold = True
-    p_meta.add_run(f"{contexte.get('date', '')}\n")
-    p_meta.add_run("Niveau : ").bold = True
-    p_meta.add_run(f"{contexte.get('niveau', '')}\n")
-    p_meta.add_run("Support : ").bold = True
-    p_meta.add_run(f"{contexte.get('type', '')}")
-    texte_propre = nettoyer_texte_xml(texte_analyse)
-    for ligne in texte_propre.split("\n"):
-        ligne_propre = ligne.strip()
-        if ligne_propre.startswith("### "):
-            doc.add_heading(ligne_propre.replace("### ", ""), level=2)
-        elif ligne_propre.startswith("#### "):
-            doc.add_heading(ligne_propre.replace("#### ", ""), level=3)
-        elif ligne_propre:
-            doc.add_paragraph(ligne_propre.replace("**", ""))
-    buffer = io.BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    return buffer
+    try:
+        from docx import Document
+        doc = Document()
+        doc.add_heading("Expertise Didactique et Conseils d'Explicitation - Physique-Chimie", level=1)
+        p_meta = doc.add_paragraph()
+        p_meta.add_run("Date : ").bold = True
+        p_meta.add_run(f"{contexte.get('date', '')}\n")
+        p_meta.add_run("Niveau : ").bold = True
+        p_meta.add_run(f"{contexte.get('niveau', '')}\n")
+        p_meta.add_run("Support : ").bold = True
+        p_meta.add_run(f"{contexte.get('type', '')}")
+        texte_propre = nettoyer_texte_xml(texte_analyse)
+        for ligne in texte_propre.split("\n"):
+            ligne_propre = ligne.strip()
+            if ligne_propre.startswith("### "):
+                doc.add_heading(ligne_propre.replace("### ", ""), level=2)
+            elif ligne_propre.startswith("#### "):
+                doc.add_heading(ligne_propre.replace("#### ", ""), level=3)
+            elif ligne_propre:
+                doc.add_paragraph(ligne_propre.replace("**", ""))
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+        return buffer
+    except Exception:
+        return None
+
+def extraire_texte_pdf(fichier):
+    try:
+        lecteur = PdfReader(fichier)
+        pages = list()
+        for page in lecteur.pages:
+            extrait = page.extract_text()
+            if extrait:
+                pages.append(extrait)
+        return "\n".join(pages).strip(), len(lecteur.pages)
+    except Exception:
+        return "", 0
+
+def convertir_visuel_base64(fichier):
+    images = list()
+    if fichier.type == "application/pdf":
+        try:
+            import fitz
+            doc_fitz = fitz.open(stream=fichier.read(), filetype="pdf")
+            compteur = 0
+            for page_fitz in doc_fitz:
+                if compteur >= 2:
+                    break
+                pix = page_fitz.get_pixmap(dpi=150)
+                images.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
+                compteur += 1
+        except Exception as e:
+            st.error(f"Erreur lecture PDF scanné : {e}")
+    else:
+        img_bytes = fichier.read()
+        images.append(base64.b64encode(img_bytes).decode("utf-8"))
+        st.image(img_bytes, caption="Document importé", width=350)
+    return images
 
 def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_images):
     lignes = list()
@@ -88,12 +124,15 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
     headers_api = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {"model": modele, "messages": messages_api, "temperature": 0.3}
 
-    reponse = requests.post(url_api, headers=headers_api, json=payload)
-    if reponse.status_code != 200:
-        return False, f"Code erreur API ({reponse.status_code}) : {reponse.text}"
-    data = reponse.json()
-    premier_choix = next(iter(data.get("choices", ())))
-    return True, premier_choix.get("message", {}).get("content", "")
+    try:
+        reponse = requests.post(url_api, headers=headers_api, json=payload)
+        if reponse.status_code != 200:
+            return False, f"Code erreur API ({reponse.status_code}) : {reponse.text}"
+        data = reponse.json()
+        premier_choix = next(iter(data.get("choices", ())))
+        return True, premier_choix.get("message", {}).get("content", "")
+    except Exception as e:
+        return False, f"Erreur de connexion : {e}"
 
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 st.markdown("*Outil de formation (INSPE / Formation continue) pour repérer les non-dits des consignes et ajuster son étayage.*")
@@ -119,39 +158,16 @@ with onglet_texte:
 with onglet_pdf:
     fichier_pdf = st.file_uploader("Déposez votre sujet ou fiche de TP (PDF natif) :", type="pdf", key=f"upload_pdf_{st.session_state.compteur_reset}")
     if fichier_pdf is not None:
-        lecteur = PdfReader(fichier_pdf)
-        pages_texte = list()
-        for page in lecteur.pages:
-            extrait = page.extract_text()
-            if extrait:
-                pages_texte.append(extrait)
-        texte_pdf = "\n".join(pages_texte).strip()
+        texte_pdf, nb_p = extraire_texte_pdf(fichier_pdf)
         if texte_pdf:
-            st.success(f"✅ PDF lu ({len(lecteur.pages)} page(s)).")
+            st.success(f"✅ PDF lu ({nb_p} page(s)).")
         else:
             st.warning("⚠️ Aucun texte détecté. Utilisez l'onglet « 📸 Photo ou PDF scanné ».")
 
 with onglet_image:
     fichier_visuel = st.file_uploader("Importez une photo (PNG, JPG) ou un PDF scanné :", type=("png", "jpg", "jpeg", "pdf"), key=f"upload_visuel_{st.session_state.compteur_reset}")
     if fichier_visuel is not None:
-        if fichier_visuel.type == "application/pdf":
-            try:
-                import fitz
-                doc_fitz = fitz.open(stream=fichier_visuel.read(), filetype="pdf")
-                compteur_pages = 0
-                for page_fitz in doc_fitz:
-                    if compteur_pages >= 2:
-                        break
-                    pix = page_fitz.get_pixmap(dpi=150)
-                    images_base64.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
-                    compteur_pages += 1
-                st.success(f"✅ PDF scanné converti ({compteur_pages} page(s)).")
-            except Exception as e:
-                st.error(f"Impossible de lire ce PDF scanné ({e}). Essayez d'importer une capture d'écran PNG ou JPG.")
-        else:
-            img_bytes = fichier_visuel.read()
-            images_base64.append(base64.b64encode(img_bytes).decode("utf-8"))
-            st.image(img_bytes, caption="Document importé", width=350)
+        images_base64 = convertir_visuel_base64(fichier_visuel)
 
 consigne_finale = texte_pdf if texte_pdf else texte_saisi.strip()
 
@@ -161,13 +177,9 @@ with col_btn1:
 with col_btn2:
     st.button("🔄 Nouvelle analyse", key="btn_reset_haut", on_click=reinitialiser_application, use_container_width=True)
 
-if lancer:
-    if not consigne_finale and not images_base64:
-        st.warning("⚠️ Veuillez saisir un texte, importer un PDF ou charger une image.")
-    else:
-        with st.spinner("Rédaction de l'expertise didactique en cours..."):
-            try:
-                cle = st.secrets.get("MISTRAL_API_KEY", "").strip()
-                succes, resultat = interroger_mistral(cle, niveau, type_activite, consigne_finale, images_base64)
-                if succes:
-                    st.session_state.analyse_resultat = resultat
+if lancer and not consigne_finale and not images_base64:
+    st.warning("⚠️ Veuillez saisir un texte, importer un PDF ou charger une image.")
+
+if lancer and (consigne_finale or images_base64):
+    with st.spinner("Rédaction de l'expertise didactique en cours..."):
+        cle = st.secrets.get("MISTRAL_API_KEY", "").strip()
