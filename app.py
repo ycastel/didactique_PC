@@ -7,13 +7,20 @@ import re
 
 st.set_page_config(page_title="Didactique PC - Implicites", page_icon="🔬", layout="wide")
 
+# Initialisation de la mémoire de session
 if "analyse_resultat" not in st.session_state:
     st.session_state.analyse_resultat = None
 if "dernier_contexte" not in st.session_state:
     st.session_state.dernier_contexte = {}
+if "compteur_reset" not in st.session_state:
+    st.session_state.compteur_reset = 0
+
+def reinitialiser_application():
+    st.session_state.analyse_resultat = None
+    st.session_state.dernier_contexte = {}
+    st.session_state.compteur_reset += 1
 
 def nettoyer_texte_xml(texte):
-    # Supprime les caractères de contrôle invisibles incompatibles avec Word
     return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', texte)
 
 def generer_docx(contexte, texte_analyse):
@@ -64,6 +71,9 @@ with st.sidebar:
     )
     
     st.divider()
+    st.button("🔄 Soumettre une autre analyse", on_click=reinitialiser_application, use_container_width=True)
+    
+    st.divider()
     st.info("""
     **💡 Piste d'exploitation en formation :**
     1. Importez un PDF de TP/sujet ou collez une consigne.
@@ -76,15 +86,21 @@ onglet_texte, onglet_pdf = st.tabs(["✍️ Saisir ou coller un texte", "📄 Im
 texte_saisi = ""
 texte_pdf = ""
 
+# L'utilisation de key dynamique permet de vider complètement les champs lors du clic sur "Soumettre une autre analyse"
 with onglet_texte:
     texte_saisi = st.text_area(
         "Collez ici la consigne ou l'extrait de fiche TP à analyser :",
         height=140,
+        key=f"zone_texte_{st.session_state.compteur_reset}",
         placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole permettant de vérifier si l'eau du robinet contient des ions chlorure, puis conclure."
     )
 
 with onglet_pdf:
-    fichier_pdf = st.file_uploader("Déposez votre sujet d'exercice ou votre fiche de TP (format PDF) :", type=["pdf"])
+    fichier_pdf = st.file_uploader(
+        "Déposez votre sujet d'exercice ou votre fiche de TP (format PDF) :",
+        type=["pdf"],
+        key=f"upload_pdf_{st.session_state.compteur_reset}"
+    )
     if fichier_pdf is not None:
         try:
             lecteur = PdfReader(fichier_pdf)
@@ -105,7 +121,16 @@ with onglet_pdf:
 
 consigne_finale = texte_pdf if texte_pdf else texte_saisi.strip()
 
-if st.button("🔍 Analyser les implicites didactiques", type="primary"):
+# Boutons d'action côte à côte
+col_btn1, col_btn2 = st.columns([2, 1])
+
+with col_btn1:
+    lancer = st.button("🔍 Analyser les implicites didactiques", type="primary", use_container_width=True)
+
+with col_btn2:
+    st.button("🔄 Nouvelle analyse", on_click=reinitialiser_application, use_container_width=True)
+
+if lancer:
     if not consigne_finale:
         st.warning("⚠️ Veuillez saisir une consigne ou importer un fichier PDF contenant du texte.")
     else:
@@ -178,19 +203,20 @@ if st.session_state.analyse_resultat:
     ctx = st.session_state.dernier_contexte
     horodatage = datetime.now().strftime('%Y%m%d_%H%M')
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         try:
             fichier_word = generer_docx(ctx, st.session_state.analyse_resultat)
             st.download_button(
-                label="📘 Télécharger au format Word (.docx)",
+                label="📘 Télécharger en Word (.docx)",
                 data=fichier_word,
                 file_name=f"analyse_implicites_PC_{horodatage}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True
             )
         except Exception as e:
-            st.warning(f"Export Word indisponible ({e}). Utilisez l'export Texte ci-contre.")
+            st.warning(f"Export Word indisponible ({e}).")
         
     with col2:
         contenu_md = f"""# Diagnostic Didactique et Conseils d'Explicitation - Physique-Chimie
@@ -203,8 +229,11 @@ if st.session_state.analyse_resultat:
 {st.session_state.analyse_resultat}
 """
         st.download_button(
-            label="📝 Télécharger au format Texte / Markdown (.md)",
+            label="📝 Télécharger en Markdown (.md)",
             data=contenu_md,
             file_name=f"analyse_implicites_PC_{horodatage}.md",
-            mime="text/markdown"
+            mime="text/markdown",
+            use_container_width=True
         )
+        
+    with col3:
