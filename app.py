@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 from datetime import datetime
 from pypdf import PdfReader
-import fitz  # PyMuPDF pour convertir les PDF scannés en images
+import fitz
 import base64
 import io
 import re
@@ -53,26 +53,23 @@ def generer_docx(contexte, texte_analyse):
     return buffer
 
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
-st.markdown("*Outil d'analyse réflexive (INSPE / Formation continue) fondé sur la didactique de la physique-chimie.*")
+st.markdown("*Outil de formation (INSPE / Formation continue) pour analyser les obstacles langagiers, méthodologiques et expérimentaux.*")
 
 with st.sidebar:
     st.header("⚙️ Contexte pédagogique")
-    niveau = st.selectbox(
-        "Niveau d'enseignement :",
-        [
-            "Collège (Cycle 4 : 5e, 4e, 3e)",
-            "Lycée Général (Seconde)",
-            "Lycée Général (Spécialité PC - 1ère / Terminale)",
-            "Lycée Technologique (STL / STI2D)"
-        ]
+    options_niveau = (
+        "Collège (Cycle 4 : 5e, 4e, 3e)",
+        "Lycée Général (Seconde)",
+        "Lycée Général (Spécialité PC - 1ère / Terminale)",
+        "Lycée Technologique (STL / STI2D)"
     )
-    type_activite = st.radio(
-        "Type de support :",
-        [
-            "Exercice écrit / Évaluation sommative",
-            "Travaux Pratiques (TP) / Démarche expérimentale / ECE"
-        ]
+    niveau = st.selectbox("Niveau d'enseignement :", options_niveau)
+    
+    options_support = (
+        "Exercice écrit / Évaluation sommative",
+        "Travaux Pratiques (TP) / Démarche expérimentale / ECE"
     )
+    type_activite = st.radio("Type de support :", options_support)
     
     st.divider()
     st.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", on_click=reinitialiser_application, use_container_width=True)
@@ -86,15 +83,15 @@ with st.sidebar:
     - Charge cognitive et étayage gradué
     """)
 
-onglet_texte, onglet_pdf, onglet_image = st.tabs([
+onglet_texte, onglet_pdf, onglet_image = st.tabs((
     "✍️ Saisir un texte",
     "📄 Importer un PDF (texte)",
     "📸 Photo ou PDF scanné (Vision)"
-])
+))
 
 texte_saisi = ""
 texte_pdf = ""
-images_base64 = []
+images_base64 = list()
 
 with onglet_texte:
     texte_saisi = st.text_area(
@@ -107,13 +104,13 @@ with onglet_texte:
 with onglet_pdf:
     fichier_pdf = st.file_uploader(
         "Déposez votre sujet d'exercice ou votre fiche de TP (PDF natif) :",
-        type=["pdf"],
+        type="pdf",
         key=f"upload_pdf_{st.session_state.compteur_reset}"
     )
     if fichier_pdf is not None:
         try:
             lecteur = PdfReader(fichier_pdf)
-            pages_texte = []
+            pages_texte = list()
             for page in lecteur.pages:
                 extrait = page.extract_text()
                 if extrait:
@@ -129,21 +126,25 @@ with onglet_pdf:
             st.error(f"Erreur PDF : {e}")
 
 with onglet_image:
+    types_acceptes = ("png", "jpg", "jpeg", "pdf")
     fichier_visuel = st.file_uploader(
         "Importez une photo (PNG, JPG) ou un PDF scanné (les 2 premières pages seront analysées) :",
-        type=["png", "jpg", "jpeg", "pdf"],
+        type=types_acceptes,
         key=f"upload_visuel_{st.session_state.compteur_reset}"
     )
     if fichier_visuel is not None:
         try:
             if fichier_visuel.type == "application/pdf":
                 doc_fitz = fitz.open(stream=fichier_visuel.read(), filetype="pdf")
-                nb_pages = min(2, len(doc_fitz))
-                for i in range(nb_pages):
-                    pix = doc_fitz[i].get_pixmap(dpi=150)
+                compteur_pages = 0
+                for page_fitz in doc_fitz:
+                    if compteur_pages >= 2:
+                        break
+                    pix = page_fitz.get_pixmap(dpi=150)
                     img_bytes = pix.tobytes("jpeg")
                     images_base64.append(base64.b64encode(img_bytes).decode("utf-8"))
-                st.success(f"✅ PDF scanné converti en image ({nb_pages} page(s) prête(s) pour l'analyse visuelle).")
+                    compteur_pages += 1
+                st.success(f"✅ PDF scanné converti en image ({compteur_pages} page(s) prête(s) pour l'analyse visuelle).")
             else:
                 img_bytes = fichier_visuel.read()
                 images_base64.append(base64.b64encode(img_bytes).decode("utf-8"))
@@ -165,7 +166,7 @@ if lancer:
     else:
         with st.spinner("Analyse didactique approfondie en cours..."):
             try:
-                api_key = st.secrets["MISTRAL_API_KEY"].strip()
+                api_key = st.secrets.get("MISTRAL_API_KEY", "").strip()
                 
                 prompt_systeme = f"""Tu es un formateur expert et chercheur en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.
 Contexte : Niveau {niveau} | Type : {type_activite}.
@@ -197,17 +198,13 @@ Termine par une **Question réflexive** destinée au professeur/stagiaire pour i
                 url_api = "https://" + "api.mistral.ai" + "/v1/chat/completions"
 
                 if images_base64:
-                    # Utilisation du modèle vision Pixtral si une image ou un PDF scanné est fourni
-                    contenu_utilisateur = [
-                        {"type": "text", "text": "Analyse les implicites didactiques des consignes présentes sur ce document :"}
-                    ]
+                    contenu_utilisateur = list()
+                    contenu_utilisateur.append({"type": "text", "text": "Analyse les implicites didactiques des consignes présentes sur ce document :"})
                     for img_b64 in images_base64:
                         contenu_utilisateur.append({
                             "type": "image_url",
                             "image_url": f"data:image/jpeg;base64,{img_b64}"
                         })
-                    payload = {
-                        "model": "pixtral-12b-latest",
-                        "messages": [
-                            {"role": "system", "content": prompt_systeme},
-                            {"role": "user", "content": contenu_utilisateur}
+                    messages_api = (
+                        {"role": "system", "content": prompt_systeme},
+                        {"role": "user", "content": contenu_utilisateur}
