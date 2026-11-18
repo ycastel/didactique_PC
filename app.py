@@ -60,11 +60,11 @@ Termine par une question courte pour interroger l'intention pédagogique de l'en
                 response = requests.post(
                     "https://mistral.ai",
                     headers={
-                        "Authorization": f"Bearer {api_key}",
+                        "Authorization": f"Bearer {api_key.strip()}",
                         "Content-Type": "application/json"
                     },
                     json={
-                        "model": "mistral-large-latest",
+                        "model": "mistral-small-latest",
                         "messages": [
                             {"role": "system", "content": prompt_systeme},
                             {"role": "user", "content": consigne}
@@ -73,11 +73,12 @@ Termine par une question courte pour interroger l'intention pédagogique de l'en
                     }
                 )
                 
-                data = response.json()
                 if response.status_code == 200:
-                    st.markdown(data["choices"][0]["message"]["content"])
+                    data = response.json()
+                    st.markdown(data["choices"]["message"]["content"])
                 else:
-                    st.error(f"Erreur API Mistral ({response.status_code}) : {data}")
+                    st.error(f"Code erreur API : {response.status_code}")
+                    st.code(response.text)
                     
             except Exception as e:
-                st.error(f"Erreur : {e}")
+                st.error(f"Erreur technique : {e}")
