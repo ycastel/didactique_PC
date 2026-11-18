@@ -140,7 +140,7 @@ Termine par une **Question réflexive** destinée au professeur/stagiaire pour i
         contenu_visuel.append({"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"})
         messages.append({"role": "user", "content": contenu_visuel})
     else:
-        modele = "mistral-large-latest"
+        modele = "mistral-small-latest"
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
     with st.spinner("Rédaction de l'analyse didactique approfondie en cours..."):
@@ -149,7 +149,7 @@ Termine par une **Question réflexive** destinée au professeur/stagiaire pour i
             url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={"model": modele, "messages": messages, "temperature": 0.3},
-            timeout=60
+            timeout=120
         )
         if rep.status_code == 200:
             data = rep.json()
