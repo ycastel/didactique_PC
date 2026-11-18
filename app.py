@@ -51,6 +51,43 @@ def generer_docx(contexte, texte_analyse):
     except Exception:
         return None
 
+def extraire_contenu_utilisateur(mode, cle_txt, cle_pdf, cle_img):
+    texte_out = ""
+    images_out = list()
+    if mode == "✍️ Texte":
+        texte_out = st.session_state.get(cle_txt, "").strip()
+    elif mode == "📄 PDF (texte)":
+        f_pdf = st.session_state.get(cle_pdf)
+        if f_pdf is not None:
+            f_pdf.seek(0)
+            lecteur = PdfReader(f_pdf)
+            pages = list()
+            for p in lecteur.pages:
+                t = p.extract_text()
+                if t:
+                    pages.append(t)
+            texte_out = "\n".join(pages).strip()
+    elif mode == "📸 Image ou PDF scanné":
+        f_visuel = st.session_state.get(cle_img)
+        if f_visuel is not None:
+            f_visuel.seek(0)
+            if f_visuel.type == "application/pdf":
+                try:
+                    import fitz
+                    doc_fitz = fitz.open(stream=f_visuel.read(), filetype="pdf")
+                    c = 0
+                    for page_fitz in doc_fitz:
+                        if c >= 2:
+                            break
+                        pix = page_fitz.get_pixmap(dpi=150)
+                        images_out.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
+                        c += 1
+                except Exception as e:
+                    st.error(f"Erreur PDF scanné : {e}")
+            else:
+                images_out.append(base64.b64encode(f_visuel.read()).decode("utf-8"))
+    return texte_out, images_out
+
 def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_images):
     lignes = list()
     lignes.append("Tu es un formateur expert en didactique de la physique-chimie (INSPE / Master MEEF et formation continue).")
@@ -131,47 +168,10 @@ with col_btn2:
     st.button("🔄 Nouvelle analyse", key="btn_reset_haut", on_click=reinitialiser_application, use_container_width=True)
 
 if lancer:
-    texte_final = ""
-    images_finales = list()
-
-    if mode_saisie == "✍️ Texte":
-        texte_final = st.session_state.get(cle_widget_texte, "").strip()
-    elif mode_saisie == "📄 PDF (texte)":
-        f_pdf = st.session_state.get(cle_widget_pdf)
-        if f_pdf is not None:
-            f_pdf.seek(0)
-            lecteur = PdfReader(f_pdf)
-            pages = list()
-            for p in lecteur.pages:
-                t = p.extract_text()
-                if t:
-                    pages.append(t)
-            texte_final = "\n".join(pages).strip()
-    elif mode_saisie == "📸 Image ou PDF scanné":
-        f_visuel = st.session_state.get(cle_widget_img)
-        if f_visuel is not None:
-            f_visuel.seek(0)
-            if f_visuel.type == "application/pdf":
-                try:
-                    import fitz
-                    doc_fitz = fitz.open(stream=f_visuel.read(), filetype="pdf")
-                    c = 0
-                    for page_fitz in doc_fitz:
-                        if c >= 2:
-                            break
-                        pix = page_fitz.get_pixmap(dpi=150)
-                        images_finales.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
-                        c += 1
-                except Exception as e:
-                    st.error(f"Erreur lecture PDF scanné : {e}")
-            else:
-                images_finales.append(base64.b64encode(f_visuel.read()).decode("utf-8"))
-
+    texte_final, images_finales = extraire_contenu_utilisateur(mode_saisie, cle_widget_texte, cle_widget_pdf, cle_widget_img)
+    cle_api = st.secrets.get("MISTRAL_API_KEY", "").strip()
     if not texte_final and not images_finales:
         st.warning("⚠️ Aucun contenu détecté. Vérifiez que vous avez bien saisi un texte ou chargé un fichier valide.")
+    elif not cle_api:
+        st.error("⚠️ Clé MISTRAL_API_KEY introuvable dans les Secrets de Streamlit.")
     else:
-        with st.spinner("Rédaction de l'expertise didactique en cours..."):
-            cle_api = st.secrets.get("MISTRAL_API_KEY", "").strip()
-            if not cle_api:
-                st.error("⚠️ Clé MISTRAL_API_KEY introuvable dans les Secrets de Streamlit.")
-            else:
