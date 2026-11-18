@@ -1,5 +1,5 @@
 import streamlit as st
-from mistralai import Mistral
+import requests
 
 st.set_page_config(page_title="Didactique PC - Implicites", page_icon="🔬", layout="wide")
 
@@ -34,10 +34,8 @@ if st.button("🔍 Analyser les implicites didactiques", type="primary"):
     else:
         with st.spinner("Analyse didactique en cours..."):
             try:
-                # Récupération sécurisée de la clé API enregistrée sur Streamlit Cloud
                 api_key = st.secrets["MISTRAL_API_KEY"]
-                client = Mistral(api_key=api_key)
-
+                
                 prompt_systeme = f"""Tu es un formateur expert en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.
 Contexte : Niveau {niveau} | Type : {type_activite}.
 Analyse uniquement la formulation de la consigne fournie (ne résous pas l'exercice) en 4 parties en Markdown :
@@ -59,14 +57,27 @@ Donne 2 ou 3 exemples concrets d'erreurs ou de blocages probables d'un élève e
 ### 4. 💡 Question réflexive pour le formateur / stagiaire
 Termine par une question courte pour interroger l'intention pédagogique de l'enseignant."""
 
-                response = client.chat.complete(
-                    model="mistral-large-latest",
-                    messages=[
-                        {"role": "system", "content": prompt_systeme},
-                        {"role": "user", "content": consigne}
-                    ],
-                    temperature=0.3
+                response = requests.post(
+                    "https://mistral.ai",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "mistral-large-latest",
+                        "messages": [
+                            {"role": "system", "content": prompt_systeme},
+                            {"role": "user", "content": consigne}
+                        ],
+                        "temperature": 0.3
+                    }
                 )
-                st.markdown(response.choices.message.content)
+                
+                data = response.json()
+                if response.status_code == 200:
+                    st.markdown(data["choices"][0]["message"]["content"])
+                else:
+                    st.error(f"Erreur API Mistral ({response.status_code}) : {data}")
+                    
             except Exception as e:
                 st.error(f"Erreur : {e}")
