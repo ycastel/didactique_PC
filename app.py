@@ -46,16 +46,12 @@ if lancer:
         st.warning("⚠️ Saisissez une consigne ou chargez un fichier.")
         st.stop()
 
-    if "Cycle 4" in niveau:
-        ref_comp = "Pour le Cycle 4 (BOEN n° 31 du 30 juillet 2020), précise exactement quelles compétences du programme de physique-chimie sont engagées par cette consigne parmi : Pratiquer des démarches scientifiques, Concevoir/créer/réaliser, S'approprier des outils et des méthodes, Pratiquer des langages, Mobiliser des outils numériques."
-    else:
-        ref_comp = f"Pour le niveau {niveau} (BOEN 2019), précise exactement quelles compétences de la démarche scientifique sont engagées par cette consigne parmi : S'approprier (APP), Analyser/Raisonner (ANA), Réaliser (REA), Valider (VAL), Communiquer (COM), en justifiant brièvement pourquoi chacune est sollicitée."
-
     api_key = st.secrets["MISTRAL_API_KEY"].strip()
-    prompt = f"Tu es un formateur en didactique de la physique-chimie (INSPE / formation continue). RÈGLE PRIORITAIRE : Si le texte fourni par l'utilisateur n'est pas une consigne scolaire ou un énoncé scientifique (par exemple 'test', 'bonjour', un mot isolé ou une suite de lettres), arrête-toi immédiatement et réponds uniquement : '⚠️ Veuillez saisir une véritable consigne d'exercice ou de TP de physique-chimie pour lancer l'analyse.' Sinon, pour le niveau {niveau} et le support {support}, ne résous jamais l'exercice et ne juge pas l'enseignant : distingue les prérequis légitimes du programme (BO) des implicites parasites. Rédige des paragraphes fluides et nuancés en citant les mots de la consigne. Structure en 6 parties Markdown : ### 1. Compétences officielles du programme engagées ({ref_comp}) ; ### 2. Clarté cognitive et cadre IGÉSR (transparence des procédures et critères de réussite) ; ### 3. Obstacles épistémologiques (Gaston Bachelard) et ruptures de registres (macroscopique/microscopique/symbolique d'Alex Johnstone ou objets/modèles d'Andrée Tiberghien) ; ### 4. Contrat didactique (Guy Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) adaptés au support {support} ; ### 5. Gradation d'explicitation en 3 niveaux pour {niveau} (Niveau 1 : ouverte clarifiée ; Niveau 2 : étayage intermédiaire ; Niveau 3 : pas à pas, en signalant le risque d'effet Topaze) ; ### 6. Nuances, contre-arguments légitimes (quand la consigne initiale est pertinente) et question réflexive."
+    prompt = f"Tu es un formateur en didactique de la physique-chimie (INSPE / formation continue). Pour le niveau {niveau} et le support {support}, analyse la consigne fournie sans jamais résoudre l'exercice et sans juger l'enseignant : distingue les prérequis légitimes du programme (BO) des implicites parasites. Rédige des paragraphes fluides et nuancés en citant les mots exacts de la consigne. Structure en 6 parties Markdown : ### 1. Compétences officielles du programme engagées (précise exactement quelles compétences du programme de {niveau} sont sollicitées par cette consigne — au Cycle 4 : Pratiquer des démarches scientifiques, Concevoir/créer/réaliser, S'approprier des outils, Pratiquer des langages ; au Lycée : S'approprier APP, Analyser/Raisonner ANA, Réaliser REA, Valider VAL, Communiquer COM — en justifiant brièvement) ; ### 2. Clarté cognitive et cadre IGÉSR (transparence des procédures et critères de réussite) ; ### 3. Obstacles épistémologiques (Gaston Bachelard) et ruptures de registres (macroscopique/microscopique/symbolique d'Alex Johnstone ou objets/modèles d'Andrée Tiberghien) ; ### 4. Contrat didactique (Guy Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) adaptés au support {support} ; ### 5. Gradation d'explicitation en 3 niveaux pour {niveau} (Niveau 1 : ouverte clarifiée ; Niveau 2 : étayage intermédiaire ; Niveau 3 : pas à pas, en signalant le risque d'effet Topaze) ; ### 6. Nuances, contre-arguments légitimes (quand la consigne initiale est pertinente) et question réflexive."
 
     messages = list()
     messages.append({"role": "system", "content": prompt})
+
     if image_b64:
         modele = "pixtral-12b-latest"
         contenu_visuel = list()
@@ -68,34 +64,35 @@ if lancer:
 
     with st.spinner("Analyse didactique en cours..."):
         url = "https://" + "api.mistral.ai" + "/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        payload = {"model": modele, "messages": messages, "temperature": 0.25}
-        rep = requests.post(url, headers=headers, json=payload, timeout=120)
+        rep = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"model": modele, "messages": messages, "temperature": 0.25},
+            timeout=120
+        )
         if rep.status_code == 200:
             data = rep.json()
-            choix = data.get("choices", list())
-            premier = choix.pop(0) if choix else dict()
-            msg = premier.get("message", dict())
-            resultat = msg.get("content", "")
-            
-            if not resultat:
-                st.error("⚠️ Réponse vide de Mistral. Détail brut : " + str(data))
-                st.stop()
-                
+            premier_choix = next(iter(data["choices"]))
+            resultat = premier_choix["message"]["content"]
             st.markdown(resultat)
             st.divider()
             
             bo = "📜 **Référence BO :** "
-            if "Cycle 4" in niveau: bo += "Programme du cycle 4 (BOEN n° 31 du 30 juillet 2020) — Pratiquer des démarches scientifiques et des langages, transition qualitative vers le modèle particulaire."
-            elif "Seconde" in niveau: bo += "Programme de Seconde GT (BOEN spécial n° 1 du 22 janvier 2019) — Compétences APP, ANA, REA, VAL, COM, modélisation mathématique et incertitudes."
-            elif "Spécialité" in niveau: bo += "Programmes de Spécialité PC Première et Terminale (BOEN n° 1 du 22 janv. 2019 et n° 8 du 25 juil. 2019) & notes de service ECE — Autonomie de protocole et analyse critique."
-            else: bo += "Programmes des séries technologiques STL-SPCL et STI2D (BOEN 2019) — Démarche de projet, contextualisation technique et chaînes de mesure."
+            if "Cycle 4" in niveau:
+                bo += "Programme du cycle 4 (BOEN n° 31 du 30 juillet 2020) — Pratiquer des démarches scientifiques et des langages, transition qualitative vers le modèle particulaire."
+            elif "Seconde" in niveau:
+                bo += "Programme de Seconde GT (BOEN spécial n° 1 du 22 janvier 2019) — Compétences APP, ANA, REA, VAL, COM, modélisation mathématique et incertitudes."
+            elif "Spécialité" in niveau:
+                bo += "Programmes de Spécialité PC Première et Terminale (BOEN n° 1 du 22 janv. 2019 et n° 8 du 25 juil. 2019) & notes de service ECE — Autonomie de protocole et analyse critique."
+            else:
+                bo += "Programmes des séries technologiques STL-SPCL et STI2D (BOEN 2019) — Démarche de projet, contextualisation technique et chaînes de mesure."
             st.info(bo)
 
             doc = Document()
             doc.add_heading(f"Analyse Didactique PC ({niveau} - {support})", level=1)
             for ligne in (resultat + "\n\n" + bo).split("\n"):
-                if ligne.strip(): doc.add_paragraph(ligne.replace("#", "").replace("*", "").strip())
+                if ligne.strip():
+                    doc.add_paragraph(ligne.replace("#", "").replace("*", "").strip())
             buf = io.BytesIO()
             doc.save(buf)
             buf.seek(0)
