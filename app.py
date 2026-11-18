@@ -49,10 +49,10 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
     lignes = list()
     lignes.append("Tu es un formateur expert en didactique de la physique-chimie (INSPE / Master MEEF et formation continue).")
     lignes.append("Contexte : Niveau " + niveau + " | Support : " + type_activite + ".")
-    lignes.append("RÈGLE DE RÉDACTION : Évite les longues listes à puces abstraites. Rédige des paragraphes clairs et fluides. Cite les mots exacts de la consigne, explique simplement ce que l'élève doit deviner tout seul, et montre comment le rendre explicite.")
+    lignes.append("RÈGLE DE RÉDACTION : Évite les longues listes à puces abstraites. Rédige des paragraphes clairs, pédagogiques et fluides. Cite les mots exacts de la consigne, explique ce que l'élève doit deviner tout seul, et montre comment le rendre explicite.")
     lignes.append("Ne résous jamais l'exercice. Structure ta réponse en 4 parties en Markdown :")
     lignes.append("### 1. Ce qui est caché dans la consigne (Analyse des implicites)")
-    lignes.append("Rédige 2 ou 3 courts paragraphes décortiquant les passages problématiques : verbes d'action à protocole caché, sauts implicites entre observation macroscopique et modèle microscopique/mathématique, non-dits matériels ou de sécurité en TP.")
+    lignes.append("Rédige 2 ou 3 courts paragraphes décortiquant les passages problématiques : verbes d'action à protocole caché, sauts entre observation macroscopique et modèle microscopique/mathématique, non-dits matériels ou de sécurité en TP.")
     lignes.append("### 2. Pourquoi un élève risque de bloquer (Point de vue élève)")
     lignes.append("Explique sous forme d'exemples concrets les malentendus probables d'un élève en difficulté (confusion entre tâche matérielle et savoir scientifique visé, interprétation littérale, polysémie).")
     lignes.append("### 3. Comment expliciter la consigne (3 niveaux d'étayage)")
@@ -97,9 +97,11 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
     except Exception as e:
         return False, "Erreur technique : " + str(e)
 
-def executer_analyse(cle_api, niveau, type_activite, texte_saisi, fichier_charge):
-    texte_final = texte_saisi.strip()
+def executer_analyse(cle_api, niveau, type_activite, cle_txt, cle_fich):
+    texte_final = str(st.session_state.get(cle_txt, "")).strip()
+    fichier_charge = st.session_state.get(cle_fich)
     images_finales = list()
+
     if fichier_charge is not None:
         fichier_charge.seek(0)
         nom = fichier_charge.name.lower()
@@ -156,14 +158,14 @@ st.sidebar.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", o
 cle_txt = "txt_" + str(st.session_state.compteur_reset)
 cle_fich = "fich_" + str(st.session_state.compteur_reset)
 
-texte_saisi = st.text_area("1. Saisissez ou collez une consigne :", height=130, key=cle_txt, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole...")
-fichier_charge = st.file_uploader("2. OU importez un fichier (PDF, PNG, JPG) :", type=("pdf", "png", "jpg", "jpeg"), key=cle_fich)
+st.text_area("1. Saisissez ou collez une consigne :", height=130, key=cle_txt, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole...")
+st.file_uploader("2. OU importez un fichier (PDF, PNG, JPG) :", key=cle_fich)
 
 col_btn1, col_btn2 = st.columns(2)
 lancer = col_btn1.button("🔍 Lancer l'expertise didactique", type="primary", use_container_width=True)
 col_btn2.button("🔄 Nouvelle analyse", key="btn_reset_haut", on_click=reinitialiser_application, use_container_width=True)
 
-if lancer: executer_analyse(st.secrets.get("MISTRAL_API_KEY", "").strip(), niveau, type_activite, texte_saisi, fichier_charge)
+if lancer: executer_analyse(st.secrets.get("MISTRAL_API_KEY", "").strip(), niveau, type_activite, cle_txt, cle_fich)
 
 if st.session_state.analyse_resultat:
     st.divider()
