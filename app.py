@@ -1,7 +1,13 @@
 import streamlit as st
 import requests
+from datetime import datetime
 
 st.set_page_config(page_title="Didactique PC - Implicites", page_icon="🔬", layout="wide")
+
+if "analyse_resultat" not in st.session_state:
+    st.session_state.analyse_resultat = None
+if "dernier_contexte" not in st.session_state:
+    st.session_state.dernier_contexte = {}
 
 st.title("🔬 Didactique PC : Détecteur d'Implicites dans les Consignes")
 st.markdown("*Outil de formation (INSPE / Formation continue) pour analyser les obstacles langagiers, méthodologiques et expérimentaux.*")
@@ -21,20 +27,14 @@ with st.sidebar:
         "Type de support :",
         ["Exercice écrit / Évaluation", "Travaux Pratiques (TP) / Démarche expérimentale"]
     )
-    modele = st.text_input("Identifiant du modèle Mistral :", value="mistral-small-latest")
     
-    if st.button("🔎 Vérifier les modèles de ma clé"):
-        try:
-            api_key = st.secrets["MISTRAL_API_KEY"].strip()
-            r = requests.get("https://api.mistral.ai/v1/models", headers={"Authorization": f"Bearer {api_key}"})
-            if r.status_code == 200:
-                liste_modeles = [m["id"] for m in r.json().get("data", [])]
-                st.success(f"{len(liste_modeles)} modèles disponibles :")
-                st.write(liste_modeles)
-            else:
-                st.error(f"Erreur ({r.status_code}) : {r.text}")
-        except Exception as e:
-            st.error(f"Erreur : {e}")
+    st.divider()
+    st.info("""
+    **💡 Piste d'exploitation en formation :**
+    1. Soumettez une consigne brute issue d'un manuel ou d'un TP.
+    2. Observez les blocages potentiels côté élève.
+    3. Choisissez le niveau d'étayage (1, 2 ou 3) adapté à votre objectif d'évaluation.
+    """)
 
 consigne = st.text_area(
     "Collez ici la consigne ou l'extrait de fiche TP à analyser :",
@@ -72,13 +72,13 @@ Donne 2 ou 3 exemples concrets d'erreurs ou de blocages probables d'un élève e
 Termine par une question courte pour interroger l'intention pédagogique de l'enseignant."""
 
                 response = requests.post(
-                    "https://api.mistral.ai/v1/chat/completions",
+                    "https://mistral.ai",
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json"
                     },
                     json={
-                        "model": modele.strip(),
+                        "model": "mistral-small-latest",
                         "messages": [
                             {"role": "system", "content": prompt_systeme},
                             {"role": "user", "content": consigne}
@@ -89,10 +89,43 @@ Termine par une question courte pour interroger l'intention pédagogique de l'en
                 
                 if response.status_code == 200:
                     data = response.json()
-                    st.markdown(data["choices"][0]["message"]["content"])
+                    premier_choix = data["choices"][0]
+                    st.session_state.analyse_resultat = premier_choix["message"]["content"]
+                    st.session_state.dernier_contexte = {
+                        "niveau": niveau,
+                        "type": type_activite,
+                        "consigne": consigne,
+                        "date": datetime.now().strftime("%d/%m/%Y à %H:%M")
+                    }
                 else:
                     st.error(f"Code erreur API : {response.status_code}")
                     st.code(response.text)
                     
             except Exception as e:
                 st.error(f"Erreur technique : {e}")
+
+if st.session_state.analyse_resultat:
+    st.divider()
+    st.markdown(st.session_state.analyse_resultat)
+    
+    st.divider()
+    ctx = st.session_state.dernier_contexte
+    contenu_export = f"""# Fiche d'Analyse Didactique - Physique-Chimie
+- **Date :** {ctx.get('date', '')}
+- **Niveau :** {ctx.get('niveau', '')}
+- **Support :** {ctx.get('type', '')}
+
+## Consigne analysée
+> {ctx.get('consigne', '')}
+
+---
+
+{st.session_state.analyse_resultat}
+"""
+    
+    st.download_button(
+        label="📥 Télécharger la fiche d'analyse (.md)",
+        data=contenu_export,
+        file_name=f"analyse_implicites_PC_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
+        mime="text/markdown"
+    )
