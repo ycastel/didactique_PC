@@ -30,7 +30,12 @@ if lancer:
     if fichier is not None:
         if fichier.name.lower().endswith(".pdf"):
             lecteur = PdfReader(fichier)
-            contenu_texte = "\n".join([p.extract_text() for p in lecteur.pages if p.extract_text()]).strip()
+            pages = list()
+            for p in lecteur.pages:
+                t = p.extract_text()
+                if t:
+                    pages.append(t)
+            contenu_texte = "\n".join(pages).strip()
             if not contenu_texte:
                 st.error("⚠️ PDF scanné sans texte. Importez une capture d'écran (PNG/JPG).")
                 st.stop()
@@ -49,25 +54,32 @@ if lancer:
     api_key = st.secrets["MISTRAL_API_KEY"].strip()
     prompt = f"Tu es un formateur en didactique de la physique-chimie (INSPE / formation continue). RÈGLE PRIORITAIRE : Si le texte fourni par l'utilisateur n'est pas une consigne scolaire ou un énoncé scientifique (par exemple 'test', 'bonjour', un mot isolé ou une suite de lettres), arrête-toi immédiatement et réponds uniquement : '⚠️ Veuillez saisir une véritable consigne d'exercice ou de TP de physique-chimie pour lancer l'analyse.' Sinon, pour le niveau {niveau} et le support {support}, ne résous jamais l'exercice et ne juge pas l'enseignant : distingue les prérequis légitimes du programme (BO) des implicites parasites. Rédige des paragraphes fluides et nuancés en citant les mots de la consigne. Structure en 6 parties Markdown : ### 1. Compétences officielles du programme engagées ({ref_comp}) ; ### 2. Clarté cognitive et cadre IGÉSR (transparence des procédures et critères de réussite) ; ### 3. Obstacles épistémologiques (Gaston Bachelard) et ruptures de registres (macroscopique/microscopique/symbolique d'Alex Johnstone ou objets/modèles d'Andrée Tiberghien) ; ### 4. Contrat didactique (Guy Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) adaptés au support {support} ; ### 5. Gradation d'explicitation en 3 niveaux pour {niveau} (Niveau 1 : ouverte clarifiée ; Niveau 2 : étayage intermédiaire ; Niveau 3 : pas à pas, en signalant le risque d'effet Topaze) ; ### 6. Nuances, contre-arguments légitimes (quand la consigne initiale est pertinente) et question réflexive."
 
-    messages = [{"role": "system", "content": prompt}]
+    messages = list()
+    messages.append({"role": "system", "content": prompt})
     if image_b64:
         modele = "pixtral-12b-latest"
-        messages.append({"role": "user", "content": [{"type": "text", "text": "Analyse les implicites de ce document :"}, {"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"}]})
+        contenu_visuel = list()
+        contenu_visuel.append({"type": "text", "text": "Analyse les implicites de ce document :"})
+        contenu_visuel.append({"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"})
+        messages.append({"role": "user", "content": contenu_visuel})
     else:
         modele = "mistral-small-latest"
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
     with st.spinner("Analyse didactique en cours..."):
         url = "https://" + "api.mistral.ai" + "/v1/chat/completions"
-        rep = requests.post(url, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, json={"model": modele, "messages": messages, "temperature": 0.25}, timeout=120)
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        payload = {"model": modele, "messages": messages, "temperature": 0.25}
+        rep = requests.post(url, headers=headers, json=payload, timeout=120)
         if rep.status_code == 200:
             data = rep.json()
-            liste_choix = list(data.get("choices", list()))
-            premier_choix = liste_choix.pop(0) if liste_choix else dict()
-            resultat = premier_choix.get("message", dict()).get("content", "")
+            choix = data.get("choices", list())
+            premier = choix.pop(0) if choix else dict()
+            msg = premier.get("message", dict())
+            resultat = msg.get("content", "")
             
             if not resultat:
-                st.error("⚠️ Mistral a renvoyé une réponse vide. Réessayez.")
+                st.error("⚠️ Réponse vide de Mistral. Détail brut : " + str(data))
                 st.stop()
                 
             st.markdown(resultat)
