@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 from datetime import datetime
 from pypdf import PdfReader
-import fitz
 import base64
 import io
 import re
@@ -27,7 +26,7 @@ def nettoyer_texte_xml(texte):
 def generer_docx(contexte, texte_analyse):
     from docx import Document
     doc = Document()
-    doc.add_heading("Diagnostic Didactique et Conseils d'Explicitation - Physique-Chimie", level=1)
+    doc.add_heading("Expertise Didactique et Conseils d'Explicitation - Physique-Chimie", level=1)
     p_meta = doc.add_paragraph()
     p_meta.add_run("Date : ").bold = True
     p_meta.add_run(f"{contexte.get('date', '')}\n")
@@ -40,8 +39,8 @@ def generer_docx(contexte, texte_analyse):
         ligne_propre = ligne.strip()
         if ligne_propre.startswith("### "):
             doc.add_heading(ligne_propre.replace("### ", ""), level=2)
-        elif ligne_propre.startswith("- "):
-            doc.add_paragraph(ligne_propre.replace("- ", "").replace("**", ""), style="List Bullet")
+        elif ligne_propre.startswith("#### "):
+            doc.add_heading(ligne_propre.replace("#### ", ""), level=3)
         elif ligne_propre:
             doc.add_paragraph(ligne_propre.replace("**", ""))
     buffer = io.BytesIO()
@@ -51,19 +50,24 @@ def generer_docx(contexte, texte_analyse):
 
 def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_images):
     lignes = list()
-    lignes.append("Tu es un formateur expert et chercheur en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.")
-    lignes.append(f"Contexte : Niveau {niveau} | Type : {type_activite}.")
-    lignes.append("Produis une expertise didactique rigoureuse de la consigne ou du document fourni (ne resous jamais l'exercice). Structure ta reponse en 5 parties en Markdown :")
-    lignes.append("### 1. Compétences cachées et consignes-valises")
-    lignes.append("Identifie les compétences de la démarche scientifique (S'approprier, Analyser/Raisonner, Réaliser, Valider, Communiquer) imbriquées implicitement, ainsi que les verbes d'action à protocole caché (justifier, exploiter, vérifier, conclure).")
-    lignes.append("### 2. Ruptures de registres et modélisation")
-    lignes.append("Analyse les sauts implicites : en chimie entre macroscopique, microscopique et symbolique (Triangle de Johnstone) ; en physique entre objets/mesures et modèles/lois mathématiques (Tiberghien), ou changement de registre (texte, schéma, graphique, équation).")
-    lignes.append("### 3. Implicites expérimentaux et charge cognitive")
-    lignes.append("Repère les non-dits matériels (verrerie, réactifs, témoin, sécurité, incertitudes) et les risques de surcharge cognitive (attention partagée entre manipulation et lecture).")
-    lignes.append("### 4. Malentendus socio-cognitifs (Point de vue élève)")
-    lignes.append("Décris 2 ou 3 malentendus probables chez un élève en difficulté (confusion entre tâche matérielle et enjeu de savoir, interprétation littérale, polysémie).")
-    lignes.append("### 5. Gradation d'explicitation et question réflexive")
-    lignes.append(f"Propose trois réécritures graduées adaptées au niveau {niveau} : Niveau 1 (Tâche complexe / Ouverte sans ambiguïté langagière), Niveau 2 (Étayage intermédiaire / Coup de pouce), Niveau 3 (Explicitation maximale / Pas à pas). Termine par une Question réflexive pour l'enseignant.")
+    lignes.append("Tu es un formateur expert en didactique de la physique-chimie (INSPE / Master MEEF et formation continue).")
+    lignes.append(f"Contexte : Niveau {niveau} | Support : {type_activite}.")
+    lignes.append("RÈGLE DE RÉDACTION TRÈS IMPORTANTE : Évite les longues listes à puces abstraites. Rédige des paragraphes clairs, pédagogiques et fluides. À chaque fois que tu repères un implicite, cite explicitement les mots exacts de la consigne, explique simplement ce que l'élève doit deviner tout seul, et montre comment le rendre explicite.")
+    lignes.append("Ne résous jamais l'exercice. Structure ton analyse en 4 parties en Markdown :")
+    lignes.append("### 1. Ce qui est caché dans la consigne (Analyse des implicites)")
+    lignes.append("Rédige 2 ou 3 courts paragraphes qui décortiquent les passages problématiques du texte. Identifie les verbes d'action à protocole caché (ex. justifier, vérifier, conclure), les sauts implicites entre observation macroscopique et modèle microscopique/mathématique, ainsi que les non-dits matériels ou de sécurité en TP.")
+    lignes.append("### 2. Pourquoi un élève risque de bloquer (Point de vue élève)")
+    lignes.append("Explique sous forme de court récit ou d'exemples concrets les malentendus probables d'un élève en difficulté (confusion entre la tâche matérielle à faire et le savoir scientifique visé, interprétation littérale, mot du quotidien pris au sens courant).")
+    lignes.append("### 3. Comment expliciter la consigne (3 niveaux d'étayage concrets)")
+    lignes.append(f"Propose trois réécritures complètes et directement utilisables en classe de {niveau}, accompagnées d'une phrase expliquant l'intérêt pédagogique de chaque version :")
+    lignes.append("#### Niveau 1 : Consigne ouverte (Tâche complexe clarifiée)")
+    lignes.append("La consigne d'origine débarrassée des ambiguïtés de langage, mais qui laisse l'élève chercher la démarche en autonomie.")
+    lignes.append("#### Niveau 2 : Étayage intermédiaire (Coup de pouce méthodologique)")
+    lignes.append("La même consigne enrichie d'indices sur les ressources à mobiliser ou la structure de réponse attendue, sans donner les étapes.")
+    lignes.append("#### Niveau 3 : Explicitation maximale (Guidage pas à pas)")
+    lignes.append("La consigne décomposée en étapes chronologiques simples, avec des verbes univoques et des critères de réussite visibles.")
+    lignes.append("### 4. Question réflexive pour le professeur")
+    lignes.append("Termine par une question courte et percutante pour aider l'enseignant à choisir entre ces 3 versions selon ce qu'il souhaite réellement évaluer.")
     prompt_sys = "\n\n".join(lignes)
 
     messages_api = list()
@@ -92,7 +96,7 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
     return True, premier_choix.get("message", {}).get("content", "")
 
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
-st.markdown("*Outil de formation (INSPE / Formation continue) pour analyser les obstacles langagiers, méthodologiques et expérimentaux.*")
+st.markdown("*Outil de formation (INSPE / Formation continue) pour repérer les non-dits des consignes et ajuster son étayage.*")
 
 with st.sidebar:
     st.header("⚙️ Contexte pédagogique")
@@ -102,8 +106,6 @@ with st.sidebar:
     type_activite = st.radio("Type de support :", options_support)
     st.divider()
     st.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", on_click=reinitialiser_application, use_container_width=True)
-    st.divider()
-    st.info("Cadres mobilisés : Compétences (APP, ANA, REA, VAL, COM), Triangle de Johnstone, Modélisation, Malentendus socio-cognitifs et Charge cognitive.")
 
 onglet_texte, onglet_pdf, onglet_image = st.tabs(("✍️ Saisir un texte", "📄 Importer un PDF (texte)", "📸 Photo ou PDF scanné (Vision)"))
 
@@ -133,15 +135,19 @@ with onglet_image:
     fichier_visuel = st.file_uploader("Importez une photo (PNG, JPG) ou un PDF scanné :", type=("png", "jpg", "jpeg", "pdf"), key=f"upload_visuel_{st.session_state.compteur_reset}")
     if fichier_visuel is not None:
         if fichier_visuel.type == "application/pdf":
-            doc_fitz = fitz.open(stream=fichier_visuel.read(), filetype="pdf")
-            compteur_pages = 0
-            for page_fitz in doc_fitz:
-                if compteur_pages >= 2:
-                    break
-                pix = page_fitz.get_pixmap(dpi=150)
-                images_base64.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
-                compteur_pages += 1
-            st.success(f"✅ PDF scanné converti ({compteur_pages} page(s)).")
+            try:
+                import fitz
+                doc_fitz = fitz.open(stream=fichier_visuel.read(), filetype="pdf")
+                compteur_pages = 0
+                for page_fitz in doc_fitz:
+                    if compteur_pages >= 2:
+                        break
+                    pix = page_fitz.get_pixmap(dpi=150)
+                    images_base64.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
+                    compteur_pages += 1
+                st.success(f"✅ PDF scanné converti ({compteur_pages} page(s)).")
+            except Exception as e:
+                st.error(f"Impossible de lire ce PDF scanné ({e}). Essayez d'importer une capture d'écran PNG ou JPG.")
         else:
             img_bytes = fichier_visuel.read()
             images_base64.append(base64.b64encode(img_bytes).decode("utf-8"))
@@ -159,25 +165,9 @@ if lancer:
     if not consigne_finale and not images_base64:
         st.warning("⚠️ Veuillez saisir un texte, importer un PDF ou charger une image.")
     else:
-        with st.spinner("Analyse didactique approfondie en cours..."):
+        with st.spinner("Rédaction de l'expertise didactique en cours..."):
             try:
                 cle = st.secrets.get("MISTRAL_API_KEY", "").strip()
                 succes, resultat = interroger_mistral(cle, niveau, type_activite, consigne_finale, images_base64)
                 if succes:
                     st.session_state.analyse_resultat = resultat
-                    st.session_state.dernier_contexte = {"niveau": niveau, "type": type_activite, "date": datetime.now().strftime("%d/%m/%Y à %H:%M")}
-                else:
-                    st.error(resultat)
-            except Exception as e:
-                st.error(f"Erreur technique : {e}")
-
-if st.session_state.analyse_resultat:
-    st.divider()
-    st.markdown(st.session_state.analyse_resultat)
-    st.divider()
-    st.subheader("📥 Exporter le diagnostic et les conseils")
-    ctx = st.session_state.dernier_contexte
-    horodatage = datetime.now().strftime('%Y%m%d_%H%M')
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        fichier_word = generer_docx(ctx, st.session_state.analyse_resultat)
