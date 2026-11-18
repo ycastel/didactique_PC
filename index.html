@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Didactique PC — Analyseur d'Implicites et d'Étayage</title>
-    <script src="https://cloudflare.com"></script>
     <style>
         :root {
             --primary: #1e3a8a;
@@ -115,6 +114,13 @@
             border: 1px solid var(--border);
         }
 
+        .qr-mini img {
+            width: 64px;
+            height: 64px;
+            border-radius: 4px;
+            display: block;
+        }
+
         .qr-mini span {
             font-size: 0.8rem;
             color: var(--text-muted);
@@ -164,7 +170,7 @@
                 <div class="tag">Bautier &amp; Rayou / Sweller</div>
             </div>
             <div class="qr-mini">
-                <div id="qrcode"></div>
+                <img src="https://qrserver.com" alt="QR Code vers Didactique PC">
                 <span>Scanner pour ouvrir sur mobile</span>
             </div>
         </div>
@@ -182,16 +188,6 @@
     <footer>
         Ressource pédagogique destinée aux enseignants et stagiaires de Physique-Chimie (Collège, Lycée Général et Technologique).
     </footer>
-
-    <script>
-        new QRCode(document.getElementById("qrcode"), {
-            text: "https://didactiquepc-wygdr4jhxvmappd6zgg2x79.streamlit.app",
-            width: 58,
-            height: 58,
-            colorDark: "#0f172a",
-            colorLight: "#ffffff"
-        });
-    </script>
 
 </body>
 </html>
