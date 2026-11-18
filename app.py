@@ -49,20 +49,20 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
     lignes = list()
     lignes.append("Tu es un formateur expert en didactique de la physique-chimie (INSPE / Master MEEF et formation continue).")
     lignes.append("Contexte : Niveau " + niveau + " | Support : " + type_activite + ".")
-    lignes.append("RÈGLE DE RÉDACTION : Évite les listes à puces abstraites. Rédige des paragraphes clairs et fluides. Cite les mots exacts de la consigne, explique ce que l'élève doit deviner, et montre comment l'expliciter.")
+    lignes.append("RÈGLE DE RÉDACTION : Évite les longues listes à puces abstraites. Rédige des paragraphes clairs et fluides. Cite les mots exacts de la consigne, explique simplement ce que l'élève doit deviner tout seul, et montre comment le rendre explicite.")
     lignes.append("Ne résous jamais l'exercice. Structure ta réponse en 4 parties en Markdown :")
     lignes.append("### 1. Ce qui est caché dans la consigne (Analyse des implicites)")
-    lignes.append("Rédige 2 ou 3 courts paragraphes décortiquant les passages problématiques : verbes d'action à protocole caché, sauts entre observation macroscopique et modèle microscopique/mathématique, non-dits matériels ou de sécurité.")
+    lignes.append("Rédige 2 ou 3 courts paragraphes décortiquant les passages problématiques : verbes d'action à protocole caché, sauts implicites entre observation macroscopique et modèle microscopique/mathématique, non-dits matériels ou de sécurité en TP.")
     lignes.append("### 2. Pourquoi un élève risque de bloquer (Point de vue élève)")
-    lignes.append("Explique sous forme d'exemples concrets les malentendus probables d'un élève (confusion entre tâche matérielle et savoir visé, interprétation littérale, polysémie).")
+    lignes.append("Explique sous forme d'exemples concrets les malentendus probables d'un élève en difficulté (confusion entre tâche matérielle et savoir scientifique visé, interprétation littérale, polysémie).")
     lignes.append("### 3. Comment expliciter la consigne (3 niveaux d'étayage)")
-    lignes.append("Propose trois réécritures complètes pour la classe de " + niveau + " avec une phrase expliquant leur intérêt pédagogique :")
+    lignes.append("Propose trois réécritures complètes pour la classe de " + niveau + " accompagnées d'une phrase expliquant l'intérêt pédagogique de chaque version :")
     lignes.append("#### Niveau 1 : Consigne ouverte (Tâche complexe clarifiée)")
     lignes.append("Consigne d'origine débarrassée des ambiguïtés langagières, laissant l'autonomie de démarche.")
     lignes.append("#### Niveau 2 : Étayage intermédiaire (Coup de pouce méthodologique)")
     lignes.append("Consigne enrichie d'indices sur les ressources ou la structure attendue, sans donner les étapes.")
     lignes.append("#### Niveau 3 : Explicitation maximale (Guidage pas à pas)")
-    lignes.append("Consigne décomposée en étapes chronologiques simples, avec verbes univoques et critères de réussite.")
+    lignes.append("Consigne décomposée en étapes chronologiques simples, avec verbes univoques et critères de réussite visibles.")
     lignes.append("### 4. Question réflexive pour le professeur")
     lignes.append("Termine par une question courte pour aider l'enseignant à choisir selon ce qu'il souhaite évaluer.")
     prompt_sys = "\n\n".join(lignes)
@@ -88,8 +88,12 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
         reponse = requests.post(url_api, headers=headers_api, json=payload, timeout=60)
         if reponse.status_code != 200: return False, "Code erreur API (" + str(reponse.status_code) + ") : " + reponse.text
         data = reponse.json()
-        premier_choix = next(iter(data.get("choices", ())))
-        return True, premier_choix.get("message", dict()).get("content", "")
+        choix_liste = data.get("choices", list())
+        if not choix_liste: return False, "Réponse vide de Mistral : " + str(data)
+        premier_choix = choix_liste.pop(0)
+        contenu_texte = premier_choix.get("message", dict()).get("content", "")
+        if not contenu_texte: return False, "Contenu vide reçu : " + str(premier_choix)
+        return True, contenu_texte
     except Exception as e:
         return False, "Erreur technique : " + str(e)
 
@@ -102,7 +106,10 @@ def executer_analyse(cle_api, niveau, type_activite, texte_saisi, fichier_charge
         if nom.endswith(".pdf"):
             try:
                 lecteur = PdfReader(fichier_charge)
-                pages = [p.extract_text() for p in lecteur.pages if p.extract_text()]
+                pages = list()
+                for p in lecteur.pages:
+                    t = p.extract_text()
+                    if t: pages.append(t)
                 texte_extrait = "\n".join(pages).strip()
                 if texte_extrait: texte_final = texte_extrait
                 if not texte_extrait:
@@ -129,11 +136,11 @@ def executer_analyse(cle_api, niveau, type_activite, texte_saisi, fichier_charge
 
     with st.spinner("Rédaction de l'expertise didactique en cours..."):
         succes, resultat = interroger_mistral(cle_api, niveau, type_activite, texte_final, images_finales)
-    if succes and resultat:
+    if succes:
         st.session_state.analyse_resultat = resultat
         st.session_state.dernier_contexte = {"niveau": niveau, "type": type_activite, "date": datetime.now().strftime("%d/%m/%Y à %H:%M")}
-    if succes and not resultat: st.warning("⚠️ Mistral a renvoyé une réponse vide.")
-    if not succes: st.error(resultat)
+    if not succes:
+        st.error(resultat)
 
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 st.markdown("*Outil de formation (INSPE / Formation continue) pour repérer les non-dits des consignes et ajuster son étayage.*")
@@ -163,7 +170,3 @@ if st.session_state.analyse_resultat:
     ctx = st.session_state.dernier_contexte
     horodatage = datetime.now().strftime("%Y%m%d_%H%M")
     entete_md = "# Expertise Didactique - Physique-Chimie\n- **Date :** " + ctx.get("date", "") + "\n- **Niveau :** " + ctx.get("niveau", "") + "\n- **Support :** " + ctx.get("type", "") + "\n\n---\n\n"
-    contenu_md = entete_md + st.session_state.analyse_resultat
-    st.subheader("📥 Exporter le diagnostic et les conseils")
-    col_exp1, col_exp2 = st.columns(2)
-    fichier_word = generer_docx(ctx, st.session_state.analyse_resultat)
