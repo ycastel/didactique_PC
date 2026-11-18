@@ -2,6 +2,8 @@ import streamlit as st
 import requests
 from datetime import datetime
 from pypdf import PdfReader
+import fitz  # PyMuPDF pour convertir les PDF scannés en images
+import base64
 import io
 import re
 
@@ -50,8 +52,8 @@ def generer_docx(contexte, texte_analyse):
     buffer.seek(0)
     return buffer
 
-st.title("🔬 Didactique PC : Détecteur d'Implicites dans les Consignes")
-st.markdown("*Outil de formation (INSPE / Formation continue) pour analyser les obstacles langagiers, méthodologiques et expérimentaux.*")
+st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
+st.markdown("*Outil d'analyse réflexive (INSPE / Formation continue) fondé sur la didactique de la physique-chimie.*")
 
 with st.sidebar:
     st.header("⚙️ Contexte pédagogique")
@@ -66,7 +68,10 @@ with st.sidebar:
     )
     type_activite = st.radio(
         "Type de support :",
-        ["Exercice écrit / Évaluation", "Travaux Pratiques (TP) / Démarche expérimentale"]
+        [
+            "Exercice écrit / Évaluation sommative",
+            "Travaux Pratiques (TP) / Démarche expérimentale / ECE"
+        ]
     )
     
     st.divider()
@@ -74,16 +79,22 @@ with st.sidebar:
     
     st.divider()
     st.info("""
-    **💡 Piste d'exploitation en formation :**
-    1. Importez un PDF de TP/sujet ou collez une consigne.
-    2. Observez les blocages potentiels côté élève.
-    3. Téléchargez la fiche d'analyse en Word ou Markdown pour vos préparations.
+    **📚 Cadres didactiques mobilisés :**
+    - Compétences de la démarche scientifique (APP, ANA, REA, VAL, COM)
+    - Registres de représentation (Triangle de Johnstone / Modélisation)
+    - Malentendus socio-cognitifs (tâche vs enjeu de savoir)
+    - Charge cognitive et étayage gradué
     """)
 
-onglet_texte, onglet_pdf = st.tabs(["✍️ Saisir ou coller un texte", "📄 Importer un fichier PDF"])
+onglet_texte, onglet_pdf, onglet_image = st.tabs([
+    "✍️ Saisir un texte",
+    "📄 Importer un PDF (texte)",
+    "📸 Photo ou PDF scanné (Vision)"
+])
 
 texte_saisi = ""
 texte_pdf = ""
+images_base64 = []
 
 with onglet_texte:
     texte_saisi = st.text_area(
@@ -95,7 +106,7 @@ with onglet_texte:
 
 with onglet_pdf:
     fichier_pdf = st.file_uploader(
-        "Déposez votre sujet d'exercice ou votre fiche de TP (format PDF) :",
+        "Déposez votre sujet d'exercice ou votre fiche de TP (PDF natif) :",
         type=["pdf"],
         key=f"upload_pdf_{st.session_state.compteur_reset}"
     )
@@ -109,129 +120,94 @@ with onglet_pdf:
                     pages_texte.append(extrait)
             texte_pdf = "\n".join(pages_texte).strip()
             if texte_pdf:
-                st.success(f"✅ PDF lu avec succès ({len(lecteur.pages)} page(s), {len(texte_pdf)} caractères extraits).")
-                with st.expander("Aperçu du texte extrait du PDF"):
+                st.success(f"✅ PDF lu ({len(lecteur.pages)} page(s)).")
+                with st.expander("Aperçu du texte extrait"):
                     st.text(texte_pdf[:1500] + ("..." if len(texte_pdf) > 1500 else ""))
             else:
-                st.warning("⚠️ Ce PDF semble être une image scannée sans texte sélectionnable.")
+                st.warning("⚠️ Aucun texte sélectionnable détecté. Utilisez l'onglet « 📸 Photo ou PDF scanné » juste à côté.")
         except Exception as e:
-            st.error(f"Erreur lors de la lecture du PDF : {e}")
+            st.error(f"Erreur PDF : {e}")
+
+with onglet_image:
+    fichier_visuel = st.file_uploader(
+        "Importez une photo (PNG, JPG) ou un PDF scanné (les 2 premières pages seront analysées) :",
+        type=["png", "jpg", "jpeg", "pdf"],
+        key=f"upload_visuel_{st.session_state.compteur_reset}"
+    )
+    if fichier_visuel is not None:
+        try:
+            if fichier_visuel.type == "application/pdf":
+                doc_fitz = fitz.open(stream=fichier_visuel.read(), filetype="pdf")
+                nb_pages = min(2, len(doc_fitz))
+                for i in range(nb_pages):
+                    pix = doc_fitz[i].get_pixmap(dpi=150)
+                    img_bytes = pix.tobytes("jpeg")
+                    images_base64.append(base64.b64encode(img_bytes).decode("utf-8"))
+                st.success(f"✅ PDF scanné converti en image ({nb_pages} page(s) prête(s) pour l'analyse visuelle).")
+            else:
+                img_bytes = fichier_visuel.read()
+                images_base64.append(base64.b64encode(img_bytes).decode("utf-8"))
+                st.image(img_bytes, caption="Document importé", width=350)
+        except Exception as e:
+            st.error(f"Erreur lors du traitement de l'image : {e}")
 
 consigne_finale = texte_pdf if texte_pdf else texte_saisi.strip()
 
 col_btn1, col_btn2 = st.columns(2)
-
 with col_btn1:
-    lancer = st.button("🔍 Analyser les implicites didactiques", type="primary", use_container_width=True)
-
+    lancer = st.button("🔍 Lancer l'expertise didactique", type="primary", use_container_width=True)
 with col_btn2:
     st.button("🔄 Nouvelle analyse", key="btn_reset_haut", on_click=reinitialiser_application, use_container_width=True)
 
 if lancer:
-    if not consigne_finale:
-        st.warning("⚠️ Veuillez saisir une consigne ou importer un fichier PDF contenant du texte.")
+    if not consigne_finale and not images_base64:
+        st.warning("⚠️ Veuillez saisir un texte, importer un PDF ou charger une image.")
     else:
-        with st.spinner("Analyse didactique en cours..."):
+        with st.spinner("Analyse didactique approfondie en cours..."):
             try:
                 api_key = st.secrets["MISTRAL_API_KEY"].strip()
                 
-                prompt_systeme = f"""Tu es un formateur expert en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.
+                prompt_systeme = f"""Tu es un formateur expert et chercheur en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.
 Contexte : Niveau {niveau} | Type : {type_activite}.
-Analyse uniquement la formulation des consignes fournie (ne résous pas l'exercice) en 4 parties claires en Markdown :
 
-### 1. 🕵️ Diagnostic des implicites
-- **Implicites méthodologiques** (verbes d'action à protocole caché : justifier, exploiter, vérifier...).
-- **Implicites de la démarche expérimentale** (matériel non nommé, témoin, sécurité, grandeur mesurée vs calculée).
-- **Implicites cognitifs et prérequis** (savoirs antérieurs non rappelés, changement de registre texte/schéma/graphique/équation).
-- **Implicites langagiers et polysémie** (vocabulaire courant vs scientifique, double tâche).
+Ta mission est de produire une expertise didactique rigoureuse de la consigne ou du document fourni (ne résous jamais l'exercice). Structure impérativement ta réponse en 5 parties en Markdown :
 
-### 2. 🧠 Simulation « Point de vue élève »
-Donne 2 ou 3 exemples concrets d'erreurs ou de blocages probables d'un élève en difficulté ou à besoins particuliers.
+### 1. 🎯 Compétences cachées et « consignes-valises »
+Identifie les compétences de la démarche scientifique (S'approprier, Analyser/Raisonner, Réaliser, Valider, Communiquer) imbriquées implicitement dans une même question, ainsi que les verbes d'action à protocole caché (ex. : justifier, exploiter, vérifier, conclure).
 
-### 3. 🪜 Gradation d'explicitation (Propositions de réécriture et conseils)
-Propose trois versions de la consigne adaptées au niveau {niveau} :
-- **Niveau 1 (Tâche complexe / Ouverte)** : Consigne d'origine débarrassée des ambiguïtés langagières.
-- **Niveau 2 (Étayage intermédiaire)** : Ajout d'indices sur la démarche sans donner les étapes.
-- **Niveau 3 (Explicitation maximale / Pas à pas)** : Décomposition en tâches élémentaires univoques.
+### 2. ⚛️ Ruptures de registres et modélisation
+Analyse les sauts implicites imposés à l'élève :
+- En chimie : passage non explicité entre les niveaux macroscopique, microscopique et symbolique (Triangle de Johnstone).
+- En physique : passage entre le monde des objets/mesures et le monde des modèles/lois mathématiques (Tiberghien), ou changement de registre (texte, schéma normalisé, graphique, équation).
 
-### 4. 💡 Question réflexive pour le formateur / stagiaire
-Termine par une question courte pour interroger l'intention pédagogique de l'enseignant."""
+### 3. 🧪 Implicites expérimentaux et charge cognitive (TP / Évaluation)
+Repère les non-dits matériels (verrerie, réactifs, témoin, sécurité, incertitudes/chiffres significatifs) et les risques de surcharge cognitive (attention partagée entre manipulation et lecture, consignes ambiguës).
+
+### 4. 🧠 Malentendus socio-cognitifs (« Point de vue élève »)
+Décris 2 ou 3 malentendus probables chez un élève en difficulté (confusion entre la tâche matérielle à exécuter et l'enjeu de savoir visé, interprétation littérale, polysémie du lexique scientifique).
+
+### 5. 🪜 Gradation d'explicitation et question réflexive
+Propose trois réécritures graduées adaptées au niveau {niveau} :
+- **Niveau 1 (Tâche complexe / Ouverte)** : Formulation débarrassée des ambiguïtés langagières mais préservant l'autonomie de raisonnement.
+- **Niveau 2 (Étayage intermédiaire / Coup de pouce)** : Ajout d'indices sur les ressources ou la stratégie attendue.
+- **Niveau 3 (Explicitation maximale / Pas à pas)** : Décomposition en tâches élémentaires univoques avec critères de réussite visibles.
+
+Termine par une **Question réflexive** destinée au professeur/stagiaire pour interroger l'alignement entre sa consigne et son intention d'évaluation."""
 
                 url_api = "https://" + "api.mistral.ai" + "/v1/chat/completions"
 
-                response = requests.post(
-                    url_api,
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": "mistral-small-latest",
+                if images_base64:
+                    # Utilisation du modèle vision Pixtral si une image ou un PDF scanné est fourni
+                    contenu_utilisateur = [
+                        {"type": "text", "text": "Analyse les implicites didactiques des consignes présentes sur ce document :"}
+                    ]
+                    for img_b64 in images_base64:
+                        contenu_utilisateur.append({
+                            "type": "image_url",
+                            "image_url": f"data:image/jpeg;base64,{img_b64}"
+                        })
+                    payload = {
+                        "model": "pixtral-12b-latest",
                         "messages": [
                             {"role": "system", "content": prompt_systeme},
-                            {"role": "user", "content": consigne_finale[:12000]}
-                        ],
-                        "temperature": 0.3
-                    }
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    premier_choix = next(iter(data["choices"]))
-                    st.session_state.analyse_resultat = premier_choix["message"]["content"]
-                    st.session_state.dernier_contexte = {
-                        "niveau": niveau,
-                        "type": type_activite,
-                        "date": datetime.now().strftime("%d/%m/%Y à %H:%M")
-                    }
-                else:
-                    st.error(f"Code erreur API : {response.status_code}")
-                    st.code(response.text)
-                    
-            except Exception as e:
-                st.error(f"Erreur technique : {e}")
-
-if st.session_state.analyse_resultat:
-    st.divider()
-    st.markdown(st.session_state.analyse_resultat)
-    
-    st.divider()
-    st.subheader("📥 Exporter le diagnostic et les conseils")
-    ctx = st.session_state.dernier_contexte
-    horodatage = datetime.now().strftime('%Y%m%d_%H%M')
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        try:
-            fichier_word = generer_docx(ctx, st.session_state.analyse_resultat)
-            st.download_button(
-                label="📘 Télécharger en Word (.docx)",
-                data=fichier_word,
-                file_name=f"analyse_implicites_PC_{horodatage}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                use_container_width=True
-            )
-        except Exception as e:
-            st.warning(f"Export Word indisponible ({e}).")
-        
-    with col2:
-        contenu_md = f"""# Diagnostic Didactique et Conseils d'Explicitation - Physique-Chimie
-- **Date :** {ctx.get('date', '')}
-- **Niveau :** {ctx.get('niveau', '')}
-- **Support :** {ctx.get('type', '')}
-
----
-
-{st.session_state.analyse_resultat}
-"""
-        st.download_button(
-            label="📝 Télécharger en Markdown (.md)",
-            data=contenu_md,
-            file_name=f"analyse_implicites_PC_{horodatage}.md",
-            mime="text/markdown",
-            use_container_width=True
-        )
-        
-    with col3:
-        st.button("🔄 Soumettre une autre analyse", key="btn_reset_bas", on_click=reinitialiser_application, use_container_width=True)
+                            {"role": "user", "content": contenu_utilisateur}
