@@ -53,6 +53,7 @@ def generer_docx(contexte, texte_analyse):
 
 def extraire_texte_pdf(fichier):
     try:
+        fichier.seek(0)
         lecteur = PdfReader(fichier)
         pages = list()
         for page in lecteur.pages:
@@ -65,6 +66,7 @@ def extraire_texte_pdf(fichier):
 
 def convertir_visuel_base64(fichier):
     images = list()
+    fichier.seek(0)
     if fichier.type == "application/pdf":
         try:
             import fitz
@@ -81,7 +83,6 @@ def convertir_visuel_base64(fichier):
     else:
         img_bytes = fichier.read()
         images.append(base64.b64encode(img_bytes).decode("utf-8"))
-        st.image(img_bytes, caption="Document importé", width=350)
     return images
 
 def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_images):
@@ -146,30 +147,35 @@ with st.sidebar:
     st.divider()
     st.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", on_click=reinitialiser_application, use_container_width=True)
 
-onglet_texte, onglet_pdf, onglet_image = st.tabs(("✍️ Saisir un texte", "📄 Importer un PDF (texte)", "📸 Photo ou PDF scanné (Vision)"))
+mode_saisie = st.radio(
+    "Choisissez votre mode d'importation :",
+    ("✍️ Saisir ou coller un texte", "📄 Importer un PDF (texte)", "📸 Photo ou PDF scanné (Vision)"),
+    horizontal=True
+)
 
 texte_saisi = ""
-texte_pdf = ""
-images_base64 = list()
+fichier_pdf = None
+fichier_visuel = None
 
-with onglet_texte:
-    texte_saisi = st.text_area("Collez ici la consigne ou l'extrait de fiche TP à analyser :", height=140, key=f"zone_texte_{st.session_state.compteur_reset}")
-
-with onglet_pdf:
-    fichier_pdf = st.file_uploader("Déposez votre sujet ou fiche de TP (PDF natif) :", type="pdf", key=f"upload_pdf_{st.session_state.compteur_reset}")
-    if fichier_pdf is not None:
-        texte_pdf, nb_p = extraire_texte_pdf(fichier_pdf)
-        if texte_pdf:
-            st.success(f"✅ PDF lu ({nb_p} page(s)).")
-        else:
-            st.warning("⚠️ Aucun texte détecté. Utilisez l'onglet « 📸 Photo ou PDF scanné ».")
-
-with onglet_image:
-    fichier_visuel = st.file_uploader("Importez une photo (PNG, JPG) ou un PDF scanné :", type=("png", "jpg", "jpeg", "pdf"), key=f"upload_visuel_{st.session_state.compteur_reset}")
-    if fichier_visuel is not None:
-        images_base64 = convertir_visuel_base64(fichier_visuel)
-
-consigne_finale = texte_pdf if texte_pdf else texte_saisi.strip()
+if mode_saisie == "✍️ Saisir ou coller un texte":
+    texte_saisi = st.text_area(
+        "Collez ici la consigne ou l'extrait de fiche TP à analyser :",
+        height=140,
+        key=f"zone_texte_{st.session_state.compteur_reset}",
+        placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole permettant de vérifier si l'eau du robinet contient des ions chlorure, puis conclure."
+    )
+elif mode_saisie == "📄 Importer un PDF (texte)":
+    fichier_pdf = st.file_uploader(
+        "Déposez votre sujet ou fiche de TP (PDF natif) :",
+        type="pdf",
+        key=f"upload_pdf_{st.session_state.compteur_reset}"
+    )
+else:
+    fichier_visuel = st.file_uploader(
+        "Importez une photo (PNG, JPG) ou un PDF scanné :",
+        type=("png", "jpg", "jpeg", "pdf"),
+        key=f"upload_visuel_{st.session_state.compteur_reset}"
+    )
 
 col_btn1, col_btn2 = st.columns(2)
 with col_btn1:
@@ -177,9 +183,13 @@ with col_btn1:
 with col_btn2:
     st.button("🔄 Nouvelle analyse", key="btn_reset_haut", on_click=reinitialiser_application, use_container_width=True)
 
-if lancer and not consigne_finale and not images_base64:
-    st.warning("⚠️ Veuillez saisir un texte, importer un PDF ou charger une image.")
+if lancer:
+    texte_final = ""
+    images_finales = list()
 
-if lancer and (consigne_finale or images_base64):
-    with st.spinner("Rédaction de l'expertise didactique en cours..."):
-        cle = st.secrets.get("MISTRAL_API_KEY", "").strip()
+    if mode_saisie == "✍️ Saisir ou coller un texte":
+        texte_final = texte_saisi.strip()
+    elif mode_saisie == "📄 Importer un PDF (texte)" and fichier_pdf is not None:
+        texte_final, nb_p = extraire_texte_pdf(fichier_pdf)
+        if not texte_final:
+            st.warning("⚠️ Aucun texte détecté dans ce PDF. Utilisez le mode « 📸 Photo ou PDF scanné ».")
