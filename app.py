@@ -2,18 +2,55 @@ import streamlit as st
 import requests
 from datetime import datetime
 from pypdf import PdfReader
+from docx import Document
 import base64
+import io
 
 st.set_page_config(page_title="Didactique PC", page_icon="🔬", layout="wide")
+
+if "reset" not in st.session_state:
+    st.session_state.reset = 0
+
+def nouvelle_analyse():
+    st.session_state.reset += 1
+
+def creer_docx(niveau, support, contenu_markdown):
+    doc = Document()
+    doc.add_heading("Expertise Didactique - Physique-Chimie", level=1)
+    p = doc.add_paragraph()
+    p.add_run(f"Niveau : {niveau} | Support : {support}").italic = True
+    
+    for ligne in contenu_markdown.split("\n"):
+        l = ligne.strip()
+        if not l:
+            continue
+        elif l.startswith("### "):
+            doc.add_heading(l.replace("### ", ""), level=2)
+        elif l.startswith("#### "):
+            doc.add_heading(l.replace("#### ", ""), level=3)
+        else:
+            doc.add_paragraph(l.replace("**", ""))
+            
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 
 niveau = st.sidebar.selectbox("Niveau :", ("Collège (Cycle 4)", "Lycée Général (Seconde)", "Lycée Général (Spécialité PC)", "Lycée Technologique (STL / STI2D)"))
 support = st.sidebar.radio("Support :", ("Exercice / Évaluation", "TP / Démarche expérimentale"))
+st.sidebar.divider()
+st.sidebar.button("🔄 Nouvelle analyse", key="reset_side", on_click=nouvelle_analyse, use_container_width=True)
 
-texte = st.text_area("1. Collez une consigne :", height=120, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole permettant de vérifier si l'eau du robinet contient des ions chlorure, puis conclure.")
-fichier = st.file_uploader("2. OU importez un fichier (PDF, PNG, JPG) :")
+texte = st.text_area("1. Collez une consigne :", height=120, key=f"t_{st.session_state.reset}", placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole permettant de vérifier si l'eau du robinet contient des ions chlorure, puis conclure.")
+fichier = st.file_uploader("2. OU importez un fichier (PDF, PNG, JPG) :", key=f"f_{st.session_state.reset}")
 
-if st.button("🔍 Lancer l'analyse", type="primary"):
+col1, col2 = st.columns(2)
+lancer = col1.button("🔍 Lancer l'analyse", type="primary", use_container_width=True)
+col2.button("🔄 Nouvelle analyse", key="reset_top", on_click=nouvelle_analyse, use_container_width=True)
+
+if lancer:
     contenu_texte = texte.strip()
     image_b64 = ""
 
@@ -76,12 +113,13 @@ Propose 3 réécritures utilisables en classe de {niveau} (Niveau 1 : ouverte cl
                 premier_choix = next(iter(data["choices"]))
                 resultat = premier_choix["message"]["content"]
                 st.markdown(resultat)
-                export_md = f"# Expertise Didactique - Physique-Chimie\n- **Niveau :** {niveau}\n- **Support :** {support}\n\n---\n\n{resultat}"
+                st.divider()
+                fichier_doc = creer_docx(niveau, support, resultat)
                 st.download_button(
-                    "📝 Télécharger l'analyse (.md)",
-                    data=export_md,
-                    file_name=f"analyse_PC_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
-                    mime="text/markdown"
+                    "📘 Télécharger l'analyse en Word (.docx)",
+                    data=fichier_doc,
+                    file_name=f"expertise_PC_{datetime.now().strftime('%Y%m%d_%H%M')}.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
             else:
                 st.error(f"Erreur Mistral ({rep.status_code}) : {rep.text}")
