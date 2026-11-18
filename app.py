@@ -144,17 +144,17 @@ Termine par une **Question réflexive** destinée au professeur/stagiaire pour i
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
     with st.spinner("Rédaction de l'analyse didactique approfondie en cours..."):
-        try:
-            url = "https://" + "api.mistral.ai" + "/v1/chat/completions"
-            rep = requests.post(
-                url,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={"model": modele, "messages": messages, "temperature": 0.3},
-                timeout=60
-            )
-            if rep.status_code == 200:
-                data = rep.json()
-                premier_choix = next(iter(data["choices"]))
-                resultat = premier_choix["message"]["content"]
-                st.markdown(resultat)
-                st.divider()
+        url = "https://" + "api.mistral.ai" + "/v1/chat/completions"
+        rep = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"model": modele, "messages": messages, "temperature": 0.3},
+            timeout=60
+        )
+        if rep.status_code == 200:
+            data = rep.json()
+            premier_choix = next(iter(data["choices"]))
+            resultat = premier_choix["message"]["content"]
+            st.markdown(resultat)
+            st.divider()
+            fichier_doc = creer_docx(niveau, support, resultat)
