@@ -56,7 +56,7 @@ def extraire_contenu_utilisateur(mode, cle_txt, cle_pdf, cle_img):
     images_out = list()
     if mode == "✍️ Texte":
         texte_out = st.session_state.get(cle_txt, "").strip()
-    elif mode == "📄 PDF (texte)":
+    if mode == "📄 PDF (texte)":
         f_pdf = st.session_state.get(cle_pdf)
         if f_pdf is not None:
             f_pdf.seek(0)
@@ -67,7 +67,7 @@ def extraire_contenu_utilisateur(mode, cle_txt, cle_pdf, cle_img):
                 if t:
                     pages.append(t)
             texte_out = "\n".join(pages).strip()
-    elif mode == "📸 Image ou PDF scanné":
+    if mode == "📸 Image ou PDF scanné":
         f_visuel = st.session_state.get(cle_img)
         if f_visuel is not None:
             f_visuel.seek(0)
@@ -84,7 +84,7 @@ def extraire_contenu_utilisateur(mode, cle_txt, cle_pdf, cle_img):
                         c += 1
                 except Exception as e:
                     st.error(f"Erreur PDF scanné : {e}")
-            else:
+            if f_visuel.type != "application/pdf":
                 images_out.append(base64.b64encode(f_visuel.read()).decode("utf-8"))
     return texte_out, images_out
 
@@ -112,6 +112,7 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
 
     messages_api = list()
     messages_api.append({"role": "system", "content": prompt_sys})
+    modele = "mistral-small-latest"
 
     if liste_images:
         contenu_visuel = list()
@@ -120,9 +121,9 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
             contenu_visuel.append({"type": "image_url", "image_url": f"data:image/jpeg;base64,{img_b64}"})
         messages_api.append({"role": "user", "content": contenu_visuel})
         modele = "pixtral-12b-latest"
-    else:
+
+    if not liste_images:
         messages_api.append({"role": "user", "content": texte_consigne[:12000]})
-        modele = "mistral-small-latest"
 
     url_api = "https://" + "api.mistral.ai" + "/v1/chat/completions"
     headers_api = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -156,9 +157,9 @@ cle_widget_img = f"img_{st.session_state.compteur_reset}"
 
 if mode_saisie == "✍️ Texte":
     st.text_area("Collez ici la consigne ou l'extrait de fiche TP :", height=140, key=cle_widget_texte, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole...")
-elif mode_saisie == "📄 PDF (texte)":
+if mode_saisie == "📄 PDF (texte)":
     st.file_uploader("Déposez votre sujet ou fiche de TP (PDF) :", type="pdf", key=cle_widget_pdf)
-else:
+if mode_saisie == "📸 Image ou PDF scanné":
     st.file_uploader("Importez une photo (PNG, JPG) ou un PDF scanné :", type=("png", "jpg", "jpeg", "pdf"), key=cle_widget_img)
 
 col_btn1, col_btn2 = st.columns(2)
@@ -172,6 +173,4 @@ if lancer:
     cle_api = st.secrets.get("MISTRAL_API_KEY", "").strip()
     if not texte_final and not images_finales:
         st.warning("⚠️ Aucun contenu détecté. Vérifiez que vous avez bien saisi un texte ou chargé un fichier valide.")
-    elif not cle_api:
-        st.error("⚠️ Clé MISTRAL_API_KEY introuvable dans les Secrets de Streamlit.")
-    else:
+    if not cle_api:
