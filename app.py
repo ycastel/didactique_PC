@@ -9,14 +9,14 @@ import re
 st.set_page_config(page_title="Didactique PC - Implicites", page_icon="🔬", layout="wide")
 
 if "analyse_resultat" not in st.session_state:
-    st.session_state.analyse_resultat = None
+    st.session_state.analyse_resultat = ""
 if "dernier_contexte" not in st.session_state:
     st.session_state.dernier_contexte = {}
 if "compteur_reset" not in st.session_state:
     st.session_state.compteur_reset = 0
 
 def reinitialiser_application():
-    st.session_state.analyse_resultat = None
+    st.session_state.analyse_resultat = ""
     st.session_state.dernier_contexte = {}
     st.session_state.compteur_reset += 1
 
@@ -50,40 +50,6 @@ def generer_docx(contexte, texte_analyse):
         return buffer
     except Exception:
         return None
-
-def extraire_texte_pdf(fichier):
-    try:
-        fichier.seek(0)
-        lecteur = PdfReader(fichier)
-        pages = list()
-        for page in lecteur.pages:
-            extrait = page.extract_text()
-            if extrait:
-                pages.append(extrait)
-        return "\n".join(pages).strip(), len(lecteur.pages)
-    except Exception:
-        return "", 0
-
-def convertir_visuel_base64(fichier):
-    images = list()
-    fichier.seek(0)
-    if fichier.type == "application/pdf":
-        try:
-            import fitz
-            doc_fitz = fitz.open(stream=fichier.read(), filetype="pdf")
-            compteur = 0
-            for page_fitz in doc_fitz:
-                if compteur >= 2:
-                    break
-                pix = page_fitz.get_pixmap(dpi=150)
-                images.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
-                compteur += 1
-        except Exception as e:
-            st.error(f"Erreur lecture PDF scanné : {e}")
-    else:
-        img_bytes = fichier.read()
-        images.append(base64.b64encode(img_bytes).decode("utf-8"))
-    return images
 
 def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_images):
     lignes = list()
@@ -126,7 +92,7 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
     payload = {"model": modele, "messages": messages_api, "temperature": 0.3}
 
     try:
-        reponse = requests.post(url_api, headers=headers_api, json=payload)
+        reponse = requests.post(url_api, headers=headers_api, json=payload, timeout=60)
         if reponse.status_code != 200:
             return False, f"Code erreur API ({reponse.status_code}) : {reponse.text}"
         data = reponse.json()
@@ -140,42 +106,23 @@ st.markdown("*Outil de formation (INSPE / Formation continue) pour repérer les 
 
 with st.sidebar:
     st.header("⚙️ Contexte pédagogique")
-    options_niveau = ("Collège (Cycle 4 : 5e, 4e, 3e)", "Lycée Général (Seconde)", "Lycée Général (Spécialité PC - 1ère / Terminale)", "Lycée Technologique (STL / STI2D)")
-    niveau = st.selectbox("Niveau d'enseignement :", options_niveau)
-    options_support = ("Exercice écrit / Évaluation sommative", "Travaux Pratiques (TP) / Démarche expérimentale / ECE")
-    type_activite = st.radio("Type de support :", options_support)
+    niveau = st.selectbox("Niveau d'enseignement :", ("Collège (Cycle 4 : 5e, 4e, 3e)", "Lycée Général (Seconde)", "Lycée Général (Spécialité PC - 1ère / Terminale)", "Lycée Technologique (STL / STI2D)"))
+    type_activite = st.radio("Type de support :", ("Exercice écrit / Évaluation sommative", "Travaux Pratiques (TP) / Démarche expérimentale / ECE"))
     st.divider()
     st.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", on_click=reinitialiser_application, use_container_width=True)
 
-mode_saisie = st.radio(
-    "Choisissez votre mode d'importation :",
-    ("✍️ Saisir ou coller un texte", "📄 Importer un PDF (texte)", "📸 Photo ou PDF scanné (Vision)"),
-    horizontal=True
-)
+mode_saisie = st.radio("Mode d'importation :", ("✍️ Texte", "📄 PDF (texte)", "📸 Image ou PDF scanné"), horizontal=True)
 
-texte_saisi = ""
-fichier_pdf = None
-fichier_visuel = None
+cle_widget_texte = f"txt_{st.session_state.compteur_reset}"
+cle_widget_pdf = f"pdf_{st.session_state.compteur_reset}"
+cle_widget_img = f"img_{st.session_state.compteur_reset}"
 
-if mode_saisie == "✍️ Saisir ou coller un texte":
-    texte_saisi = st.text_area(
-        "Collez ici la consigne ou l'extrait de fiche TP à analyser :",
-        height=140,
-        key=f"zone_texte_{st.session_state.compteur_reset}",
-        placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole permettant de vérifier si l'eau du robinet contient des ions chlorure, puis conclure."
-    )
-elif mode_saisie == "📄 Importer un PDF (texte)":
-    fichier_pdf = st.file_uploader(
-        "Déposez votre sujet ou fiche de TP (PDF natif) :",
-        type="pdf",
-        key=f"upload_pdf_{st.session_state.compteur_reset}"
-    )
+if mode_saisie == "✍️ Texte":
+    st.text_area("Collez ici la consigne ou l'extrait de fiche TP :", height=140, key=cle_widget_texte, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole...")
+elif mode_saisie == "📄 PDF (texte)":
+    st.file_uploader("Déposez votre sujet ou fiche de TP (PDF) :", type="pdf", key=cle_widget_pdf)
 else:
-    fichier_visuel = st.file_uploader(
-        "Importez une photo (PNG, JPG) ou un PDF scanné :",
-        type=("png", "jpg", "jpeg", "pdf"),
-        key=f"upload_visuel_{st.session_state.compteur_reset}"
-    )
+    st.file_uploader("Importez une photo (PNG, JPG) ou un PDF scanné :", type=("png", "jpg", "jpeg", "pdf"), key=cle_widget_img)
 
 col_btn1, col_btn2 = st.columns(2)
 with col_btn1:
@@ -187,9 +134,44 @@ if lancer:
     texte_final = ""
     images_finales = list()
 
-    if mode_saisie == "✍️ Saisir ou coller un texte":
-        texte_final = texte_saisi.strip()
-    elif mode_saisie == "📄 Importer un PDF (texte)" and fichier_pdf is not None:
-        texte_final, nb_p = extraire_texte_pdf(fichier_pdf)
-        if not texte_final:
-            st.warning("⚠️ Aucun texte détecté dans ce PDF. Utilisez le mode « 📸 Photo ou PDF scanné ».")
+    if mode_saisie == "✍️ Texte":
+        texte_final = st.session_state.get(cle_widget_texte, "").strip()
+    elif mode_saisie == "📄 PDF (texte)":
+        f_pdf = st.session_state.get(cle_widget_pdf)
+        if f_pdf is not None:
+            f_pdf.seek(0)
+            lecteur = PdfReader(f_pdf)
+            pages = list()
+            for p in lecteur.pages:
+                t = p.extract_text()
+                if t:
+                    pages.append(t)
+            texte_final = "\n".join(pages).strip()
+    elif mode_saisie == "📸 Image ou PDF scanné":
+        f_visuel = st.session_state.get(cle_widget_img)
+        if f_visuel is not None:
+            f_visuel.seek(0)
+            if f_visuel.type == "application/pdf":
+                try:
+                    import fitz
+                    doc_fitz = fitz.open(stream=f_visuel.read(), filetype="pdf")
+                    c = 0
+                    for page_fitz in doc_fitz:
+                        if c >= 2:
+                            break
+                        pix = page_fitz.get_pixmap(dpi=150)
+                        images_finales.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
+                        c += 1
+                except Exception as e:
+                    st.error(f"Erreur lecture PDF scanné : {e}")
+            else:
+                images_finales.append(base64.b64encode(f_visuel.read()).decode("utf-8"))
+
+    if not texte_final and not images_finales:
+        st.warning("⚠️ Aucun contenu détecté. Vérifiez que vous avez bien saisi un texte ou chargé un fichier valide.")
+    else:
+        with st.spinner("Rédaction de l'expertise didactique en cours..."):
+            cle_api = st.secrets.get("MISTRAL_API_KEY", "").strip()
+            if not cle_api:
+                st.error("⚠️ Clé MISTRAL_API_KEY introuvable dans les Secrets de Streamlit.")
+            else:
