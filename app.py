@@ -18,24 +18,24 @@ def obtenir_references_bo(niveau):
     lignes = list()
     if niveau == "Collège (Cycle 4)":
         lignes.append("### 📜 Ancrage institutionnel — Programme de Physique-Chimie (Cycle 4)")
-        lignes.append("- **Texte de référence :** Programme d'enseignement du cycle des approfondissements (cycle 4) — *BOEN n° 31 du 30 juillet 2020* (ajustements consolidés).")
-        lignes.append("- **Compétences travaillées :** Pratiquer des démarches scientifiques (formuler une question, proposer une expérience simple, interpréter un résultat), s'approprier des outils et des méthodes, pratiquer des langages (passer d'une forme de langage scientifique à une autre).")
-        lignes.append("- **Vigilance BO :** Au cycle 4, la modélisation reste qualitative et progressive ; le passage entre le monde des objets (observations macroscopiques) et le monde des modèles (atomes, molécules, ions) doit être explicitement accompagné.")
+        lignes.append("- **Texte de référence :** Programme d'enseignement du cycle des approfondissements (cycle 4) — *BOEN n° 31 du 30 juillet 2020*.")
+        lignes.append("- **Compétences travaillées :** Pratiquer des démarches scientifiques, s'approprier des outils et des méthodes, pratiquer des langages.")
+        lignes.append("- **Vigilance BO :** Au cycle 4, la modélisation reste qualitative ; le passage entre le monde des objets (macroscopique) et le monde des modèles (atomes, molécules, ions) doit être explicitement accompagné.")
     elif niveau == "Lycée Général (Seconde)":
         lignes.append("### 📜 Ancrage institutionnel — Programme de Physique-Chimie (Seconde GT)")
         lignes.append("- **Texte de référence :** Programme de physique-chimie de seconde générale et technologique — *BOEN spécial n° 1 du 22 janvier 2019*.")
-        lignes.append("- **Compétences de la démarche scientifique :** S'approprier (APP), Analyser/Raisonner (ANA), Réaliser (REA), Valider (VAL), Communiquer (COM).")
-        lignes.append("- **Vigilance BO :** La classe de Seconde assure la transition vers la modélisation mathématique et l'usage rigoureux des grandeurs, unités, chiffres significatifs et incertitudes de mesure (approche statistique simple).")
+        lignes.append("- **Compétences :** S'approprier (APP), Analyser/Raisonner (ANA), Réaliser (REA), Valider (VAL), Communiquer (COM).")
+        lignes.append("- **Vigilance BO :** Transition vers la modélisation mathématique et l'usage rigoureux des grandeurs, unités, chiffres significatifs et incertitudes de mesure.")
     elif niveau == "Lycée Général (Spécialité PC - 1ère / Terminale)":
         lignes.append("### 📜 Ancrage institutionnel — Programme de Spécialité Physique-Chimie (Cycle Terminal)")
-        lignes.append("- **Textes de référence :** Programmes de spécialité physique-chimie de Première (*BOEN spécial n° 1 du 22 janvier 2019*) et de Terminale (*BOEN spécial n° 8 du 25 juillet 2019*), complétés par les notes de service sur les épreuves écrites et les **ECE**.")
-        lignes.append("- **Compétences de la démarche scientifique :** S'approprier (APP), Analyser/Raisonner (ANA), Réaliser (REA), Valider (VAL), Communiquer (COM) — avec un attendu fort sur l'autonomie dans la conception de protocoles et l'analyse critique des résultats (incertitudes-types, écart normalisé).")
-        lignes.append("- **Vigilance BO :** Les capacités exigibles distinguent explicitement les tâches guidées des tâches complexes (résolution de problème, ECE) où l'élève doit identifier lui-même les grandeurs pertinentes et les lois du modèle.")
+        lignes.append("- **Textes de référence :** Programmes de Première (*BOEN spécial n° 1 du 22 janvier 2019*) et de Terminale (*BOEN spécial n° 8 du 25 juillet 2019*), et notes de service **ECE**.")
+        lignes.append("- **Compétences :** APP, ANA, REA, VAL, COM — autonomie dans la conception de protocoles et analyse critique des résultats (incertitudes-types, écart normalisé).")
+        lignes.append("- **Vigilance BO :** Les capacités exigibles distinguent les tâches guidées des tâches complexes (résolution de problème, ECE).")
     else:
         lignes.append("### 📜 Ancrage institutionnel — Programmes des séries technologiques (STL-SPCL / STI2D)")
-        lignes.append("- **Textes de référence :** Programmes de physique-chimie et mathématiques (STI2D) et de sciences physiques et chimiques en laboratoire (STL-SPCL) — *BOEN spécial n° 1 du 22 janvier 2019* et *BOEN spécial n° 8 du 25 juillet 2019*.")
-        lignes.append("- **Compétences et approche pédagogique :** Démarche de projet, approche technologique et expérimentale contextualisée, maîtrise des chaînes de mesure, analyse critique des protocoles et communication technique rigoureuse.")
-        lignes.append("- **Vigilance BO :** L'ancrage dans des systèmes réels ou des procédés de laboratoire exige de lever les implicites liés au contexte technique tout en maintenant l'exigence sur la modélisation physique et chimique.")
+        lignes.append("- **Textes de référence :** Programmes de STI2D et STL-SPCL (*BOEN spécial n° 1 du 22 janvier 2019* et *BOEN spécial n° 8 du 25 juillet 2019*).")
+        lignes.append("- **Compétences :** Démarche de projet, approche technologique et expérimentale contextualisée, maîtrise des chaînes de mesure.")
+        lignes.append("- **Vigilance BO :** Lever les implicites liés au contexte technique tout en maintenant l'exigence sur la modélisation.")
     return "\n".join(lignes)
 
 def creer_docx(niveau, support, contenu_markdown, texte_bo):
@@ -43,7 +43,6 @@ def creer_docx(niveau, support, contenu_markdown, texte_bo):
     doc.add_heading("Analyse Didactique Approfondie - Physique-Chimie", level=1)
     p = doc.add_paragraph()
     p.add_run(f"Niveau : {niveau} | Support : {support}").italic = True
-    
     texte_complet = contenu_markdown + "\n\n" + texte_bo
     for ligne in texte_complet.split("\n"):
         l = ligne.strip()
@@ -57,7 +56,6 @@ def creer_docx(niveau, support, contenu_markdown, texte_bo):
             doc.add_paragraph(l.replace("- ", "").replace("**", ""), style="List Bullet")
         else:
             doc.add_paragraph(l.replace("**", ""))
-            
     buffer = io.BytesIO()
     doc.save(buffer)
     buffer.seek(0)
@@ -69,16 +67,13 @@ st.markdown("*Outil de formation (INSPE / Master M2E / Formation continue) fond�
 with st.expander("ℹ️ Mode d'emploi, posture didactique et cadres mobilisés (Cliquez pour ouvrir)"):
     aide = list()
     aide.append("### 🎯 Posture de l'outil : éclairer les choix, sans prescrire")
-    aide.append("Expliciter une consigne ne signifie **pas** baisser le niveau d'exigence ni « mâcher le travail » (ce qui relèverait de l'**effet Topaze** décrit par Guy Brousseau). L'objectif est de distinguer les **obstacles cognitifs légitimes** (ce que l'on veut réellement faire chercher ou évaluer) des **implicites parasites** (ambiguïtés langagières, sauts de registres non signalés, non-dits matériels) qui pénalisent les élèves les plus fragiles.")
+    aide.append("Expliciter une consigne ne signifie **pas** baisser le niveau d'exigence ni « mâcher le travail » (ce qui relèverait de l'**effet Topaze** décrit par Guy Brousseau). L'objectif est de distinguer les **obstacles cognitifs légitimes** des **implicites parasites** qui pénalisent les élèves les plus fragiles.")
     aide.append("### 🛠️ Différenciation selon le support choisi")
-    aide.append("- **Mode Exercice / Évaluation :** Cible le contrat didactique d'évaluation (Brousseau), les verbes opérateurs à protocole caché, l'exploitation de documents et les attentes rédactionnelles implicites (expression littérale, unités, chiffres significatifs).")
-    aide.append("- **Mode TP / Démarche expérimentale :** Cible les gestes et matériels non nommés, le rôle du témoin, la sécurité, la surcharge cognitive d'attention partagée à la paillasse (Sweller) et l'équilibre entre « TP-recette » et investigation ouverte.")
+    aide.append("- **Mode Exercice / Évaluation :** Contrat didactique d'évaluation (Brousseau), verbes opérateurs à protocole caché et attentes rédactionnelles implicites.")
+    aide.append("- **Mode TP / Démarche expérimentale :** Gestes et matériels non nommés, témoin, sécurité, surcharge cognitive à la paillasse (Sweller) et équilibre entre « TP-recette » et investigation.")
     aide.append("### 📚 Cadres théoriques et institutionnels intégrés")
-    aide.append("- **Inspection Générale (IGÉSR) & Bulletins Officiels (BO) :** Enseignement explicite, clarté cognitive et conformité aux attendus des programmes nationaux.")
-    aide.append("- **Guy Brousseau :** Contrat didactique et vigilance face à l'effet Topaze (glissement vers un guidage mécanique).")
-    aide.append("- **Gaston Bachelard :** Obstacles épistémologiques, sens commun et ruptures lexicales.")
-    aide.append("- **Alex Johnstone & Andrée Tiberghien :** Articulation macroscopique / microscopique / symbolique (chimie) et objets / modèles (physique).")
-    aide.append("- **Élisabeth Bautier & Patrick Rayou / John Sweller :** Malentendus socio-cognitifs et gestion de la charge cognitive.")
+    aide.append("- **Inspection Générale (IGÉSR) & Bulletins Officiels (BO) :** Enseignement explicite, clarté cognitive et conformité aux programmes.")
+    aide.append("- **Guy Brousseau, Gaston Bachelard, Alex Johnstone, Andrée Tiberghien, Bautier & Rayou, John Sweller.**")
     st.markdown("\n\n".join(aide))
 
 options_niveaux = ("Collège (Cycle 4)", "Lycée Général (Seconde)", "Lycée Général (Spécialité PC - 1ère / Terminale)", "Lycée Technologique (STL / STI2D)")
@@ -121,9 +116,23 @@ if lancer:
     lignes_focus = list()
     if support == "Exercice / Évaluation":
         lignes_focus.append("SPÉCIFICITÉ ÉVALUATION ÉCRITE / EXERCICE :")
-        lignes_focus.append("- Analyse le contrat didactique d'évaluation (Guy Brousseau) : ce que le professeur attend implicitement dans la rédaction (relation littérale avant le calcul, justification normée, conversion d'unités, chiffres significatifs, lien avec un document fourni).")
-        lignes_focus.append("- Repère les verbes opérateurs à protocole caché (« déduire », « commenter », « exploiter », « montrer que ») et les questions à tiroirs où l'implicite d'une étape bloque la suivante.")
-        lignes_focus.append("- Dans les 3 niveaux de réécriture, propose des formulations adaptées à un sujet de devoir écrit ou d'entraînement.")
+        lignes_focus.append("- Analyse le contrat didactique d'évaluation (Guy Brousseau) : attentes implicites de rédaction (relation littérale, justification, unités, chiffres significatifs).")
+        lignes_focus.append("- Repère les verbes opérateurs à protocole caché et les questions à tiroirs.")
     else:
         lignes_focus.append("SPÉCIFICITÉ TP / DÉMARCHE EXPÉRIMENTALE / ECE :")
+        lignes_focus.append("- Analyse les implicites matériels et gestuels (verrerie, calibre, témoin, sécurité, incertitudes) et la charge cognitive d'attention partagée (Sweller).")
+        lignes_focus.append("- Repère le piège du TP-recette versus une consigne d'investigation trop ouverte.")
+    focus_support = "\n".join(lignes_focus)
 
+    api_key = st.secrets["MISTRAL_API_KEY"].strip()
+    lignes_prompt = list()
+    lignes_prompt.append("Tu es un formateur spécialiste en didactique de la physique-chimie intervenant en INSPE (Master MEEF / M2E) et en formation continue.")
+    lignes_prompt.append(f"Contexte : Niveau {niveau} | Type d'activité : {support}.")
+    lignes_prompt.append("GARDE-FOUS : Ne juge jamais l'enseignant. Distingue les prérequis légitimes du programme (BO) des implicites parasites. Veille à l'effet Topaze (Guy Brousseau). Rédige en paragraphes fluides et nuancés, cite les mots exacts de la consigne, ne résous jamais l'exercice.")
+    lignes_prompt.append(focus_support)
+    lignes_prompt.append("Structure impérativement ton analyse en 5 parties en Markdown :")
+    lignes_prompt.append("### 1. Clarté cognitive et cadre de l'Inspection Générale (IGÉSR)")
+    lignes_prompt.append("Analyse la transparence des procédures intellectuelles ou expérimentales et des critères de réussite.")
+    lignes_prompt.append("### 2. Obstacles épistémologiques et ruptures de registres (Bachelard, Johnstone, Tiberghien)")
+    lignes_prompt.append("Décortique les obstacles épistémologiques (Bachelard) et les sauts implicites entre macroscopique, microscopique et symbolique (Johnstone) ou objets et modèles (Tiberghien).")
+    lignes_prompt.append("### 3. Contrat didactique, malentendus socio-cognitifs et charge cognitive (Brousseau, Bautier & Rayou, Sweller)")
