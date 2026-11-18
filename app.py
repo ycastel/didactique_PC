@@ -62,8 +62,14 @@ if lancer:
         rep = requests.post(url, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, json={"model": modele, "messages": messages, "temperature": 0.25}, timeout=120)
         if rep.status_code == 200:
             data = rep.json()
-            premier_choix = next(iter(data["choices"]))
-            resultat = premier_choix["message"]["content"]
+            liste_choix = list(data.get("choices", list()))
+            premier_choix = liste_choix.pop(0) if liste_choix else dict()
+            resultat = premier_choix.get("message", dict()).get("content", "")
+            
+            if not resultat:
+                st.error("⚠️ Mistral a renvoyé une réponse vide. Réessayez.")
+                st.stop()
+                
             st.markdown(resultat)
             st.divider()
             
