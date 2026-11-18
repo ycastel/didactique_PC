@@ -8,12 +8,9 @@ import re
 
 st.set_page_config(page_title="Didactique PC - Implicites", page_icon="🔬", layout="wide")
 
-if "analyse_resultat" not in st.session_state:
-    st.session_state.analyse_resultat = ""
-if "dernier_contexte" not in st.session_state:
-    st.session_state.dernier_contexte = {}
-if "compteur_reset" not in st.session_state:
-    st.session_state.compteur_reset = 0
+if "analyse_resultat" not in st.session_state: st.session_state.analyse_resultat = ""
+if "dernier_contexte" not in st.session_state: st.session_state.dernier_contexte = {}
+if "compteur_reset" not in st.session_state: st.session_state.compteur_reset = 0
 
 def reinitialiser_application():
     st.session_state.analyse_resultat = ""
@@ -38,12 +35,9 @@ def generer_docx(contexte, texte_analyse):
         texte_propre = nettoyer_texte_xml(texte_analyse)
         for ligne in texte_propre.split("\n"):
             ligne_propre = ligne.strip()
-            if ligne_propre.startswith("### "):
-                doc.add_heading(ligne_propre.replace("### ", ""), level=2)
-            elif ligne_propre.startswith("#### "):
-                doc.add_heading(ligne_propre.replace("#### ", ""), level=3)
-            elif ligne_propre:
-                doc.add_paragraph(ligne_propre.replace("**", ""))
+            if ligne_propre.startswith("### "): doc.add_heading(ligne_propre.replace("### ", ""), level=2)
+            elif ligne_propre.startswith("#### "): doc.add_heading(ligne_propre.replace("#### ", ""), level=3)
+            elif ligne_propre: doc.add_paragraph(ligne_propre.replace("**", ""))
         buffer = io.BytesIO()
         doc.save(buffer)
         buffer.seek(0)
@@ -51,7 +45,7 @@ def generer_docx(contexte, texte_analyse):
     except Exception:
         return None
 
-def extraire_contenu_utilisateur(mode, cle_txt, cle_pdf, cle_img):
+def extraire_contenu(mode, cle_txt, cle_pdf, cle_img):
     texte_out = ""
     images_out = list()
     if mode == "✍️ Texte":
@@ -64,8 +58,7 @@ def extraire_contenu_utilisateur(mode, cle_txt, cle_pdf, cle_img):
             pages = list()
             for p in lecteur.pages:
                 t = p.extract_text()
-                if t:
-                    pages.append(t)
+                if t: pages.append(t)
             texte_out = "\n".join(pages).strip()
     if mode == "📸 Image ou PDF scanné":
         f_visuel = st.session_state.get(cle_img)
@@ -77,8 +70,7 @@ def extraire_contenu_utilisateur(mode, cle_txt, cle_pdf, cle_img):
                     doc_fitz = fitz.open(stream=f_visuel.read(), filetype="pdf")
                     c = 0
                     for page_fitz in doc_fitz:
-                        if c >= 2:
-                            break
+                        if c >= 2: break
                         pix = page_fitz.get_pixmap(dpi=150)
                         images_out.append(base64.b64encode(pix.tobytes("jpeg")).decode("utf-8"))
                         c += 1
@@ -131,23 +123,38 @@ def interroger_mistral(api_key, niveau, type_activite, texte_consigne, liste_ima
 
     try:
         reponse = requests.post(url_api, headers=headers_api, json=payload, timeout=60)
-        if reponse.status_code != 200:
-            return False, f"Code erreur API ({reponse.status_code}) : {reponse.text}"
+        if reponse.status_code != 200: return False, f"Code erreur API ({reponse.status_code}) : {reponse.text}"
         data = reponse.json()
         premier_choix = next(iter(data.get("choices", ())))
         return True, premier_choix.get("message", {}).get("content", "")
     except Exception as e:
         return False, f"Erreur de connexion : {e}"
 
+def lancer_traitement(mode, cle_txt, cle_pdf, cle_img, niv, supp):
+    texte_final, images_finales = extraire_contenu(mode, cle_txt, cle_pdf, cle_img)
+    cle_api = st.secrets.get("MISTRAL_API_KEY", "").strip()
+    if not texte_final and not images_finales:
+        st.warning("⚠️ Aucun contenu détecté. Vérifiez votre saisie ou votre fichier.")
+        return
+    if not cle_api:
+        st.error("⚠️ Clé MISTRAL_API_KEY introuvable dans les Secrets.")
+        return
+    with st.spinner("Rédaction de l'expertise didactique en cours..."):
+        succes, resultat = interroger_mistral(cle_api, niv, supp, texte_final, images_finales)
+    if succes:
+        st.session_state.analyse_resultat = resultat
+        st.session_state.dernier_contexte = {"niveau": niv, "type": supp, "date": datetime.now().strftime("%d/%m/%Y à %H:%M")}
+    if not succes:
+        st.error(resultat)
+
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 st.markdown("*Outil de formation (INSPE / Formation continue) pour repérer les non-dits des consignes et ajuster son étayage.*")
 
-with st.sidebar:
-    st.header("⚙️ Contexte pédagogique")
-    niveau = st.selectbox("Niveau d'enseignement :", ("Collège (Cycle 4 : 5e, 4e, 3e)", "Lycée Général (Seconde)", "Lycée Général (Spécialité PC - 1ère / Terminale)", "Lycée Technologique (STL / STI2D)"))
-    type_activite = st.radio("Type de support :", ("Exercice écrit / Évaluation sommative", "Travaux Pratiques (TP) / Démarche expérimentale / ECE"))
-    st.divider()
-    st.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", on_click=reinitialiser_application, use_container_width=True)
+st.sidebar.header("⚙️ Contexte pédagogique")
+niveau = st.sidebar.selectbox("Niveau d'enseignement :", ("Collège (Cycle 4 : 5e, 4e, 3e)", "Lycée Général (Seconde)", "Lycée Général (Spécialité PC - 1ère / Terminale)", "Lycée Technologique (STL / STI2D)"))
+type_activite = st.sidebar.radio("Type de support :", ("Exercice écrit / Évaluation sommative", "Travaux Pratiques (TP) / Démarche expérimentale / ECE"))
+st.sidebar.divider()
+st.sidebar.button("🔄 Soumettre une autre analyse", key="btn_reset_sidebar", on_click=reinitialiser_application, use_container_width=True)
 
 mode_saisie = st.radio("Mode d'importation :", ("✍️ Texte", "📄 PDF (texte)", "📸 Image ou PDF scanné"), horizontal=True)
 
@@ -155,22 +162,5 @@ cle_widget_texte = f"txt_{st.session_state.compteur_reset}"
 cle_widget_pdf = f"pdf_{st.session_state.compteur_reset}"
 cle_widget_img = f"img_{st.session_state.compteur_reset}"
 
-if mode_saisie == "✍️ Texte":
-    st.text_area("Collez ici la consigne ou l'extrait de fiche TP :", height=140, key=cle_widget_texte, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole...")
-if mode_saisie == "📄 PDF (texte)":
-    st.file_uploader("Déposez votre sujet ou fiche de TP (PDF) :", type="pdf", key=cle_widget_pdf)
-if mode_saisie == "📸 Image ou PDF scanné":
-    st.file_uploader("Importez une photo (PNG, JPG) ou un PDF scanné :", type=("png", "jpg", "jpeg", "pdf"), key=cle_widget_img)
-
-col_btn1, col_btn2 = st.columns(2)
-with col_btn1:
-    lancer = st.button("🔍 Lancer l'expertise didactique", type="primary", use_container_width=True)
-with col_btn2:
-    st.button("🔄 Nouvelle analyse", key="btn_reset_haut", on_click=reinitialiser_application, use_container_width=True)
-
-if lancer:
-    texte_final, images_finales = extraire_contenu_utilisateur(mode_saisie, cle_widget_texte, cle_widget_pdf, cle_widget_img)
-    cle_api = st.secrets.get("MISTRAL_API_KEY", "").strip()
-    if not texte_final and not images_finales:
-        st.warning("⚠️ Aucun contenu détecté. Vérifiez que vous avez bien saisi un texte ou chargé un fichier valide.")
-    if not cle_api:
+if mode_saisie == "✍️ Texte": st.text_area("Collez ici la consigne ou l'extrait de fiche TP :", height=140, key=cle_widget_texte, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole...")
+if mode_saisie == "📄 PDF (texte)": st.file_uploader("Déposez votre sujet ou fiche de TP (PDF) :", type="pdf", key=cle_widget_pdf)
