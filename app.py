@@ -49,7 +49,7 @@ texte = st.text_area("1. Collez une consigne :", height=120, key=f"t_{st.session
 fichier = st.file_uploader("2. OU importez un fichier (PDF, PNG, JPG) :", key=f"f_{st.session_state.reset}")
 
 col1, col2 = st.columns(2)
-lancer = col1.button("🔍 Lancer l'expertise didactique", type="primary", use_container_width=True)
+lancer = col1.button("🔍 Lancer l'analyse didactique", type="primary", use_container_width=True)
 col2.button("🔄 Nouvelle analyse", key="reset_top", on_click=nouvelle_analyse, use_container_width=True)
 
 if lancer:
@@ -125,7 +125,7 @@ Termine par une **Question réflexive** destinée au professeur/stagiaire pour i
         modele = "mistral-large-latest"
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
-    with st.spinner("Rédaction de l'expertise didactique approfondie en cours..."):
+    with st.spinner("Rédaction de l'analyse didactique approfondie en cours..."):
         try:
             url = "https://" + "api.mistral.ai" + "/v1/chat/completions"
             rep = requests.post(
@@ -142,9 +142,9 @@ Termine par une **Question réflexive** destinée au professeur/stagiaire pour i
                 st.divider()
                 fichier_doc = creer_docx(niveau, support, resultat)
                 st.download_button(
-                    "📘 Télécharger l'expertise en Word (.docx)",
+                    "📘 Télécharger l'analyse en Word (.docx)",
                     data=fichier_doc,
-                    file_name=f"expertise_didactique_PC_{datetime.now().strftime('%Y%m%d_%H%M')}.docx",
+                    file_name=f"analyse_didactique_PC_{datetime.now().strftime('%Y%m%d_%H%M')}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
             else:
