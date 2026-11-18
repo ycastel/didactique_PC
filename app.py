@@ -21,6 +21,20 @@ with st.sidebar:
         "Type de support :",
         ["Exercice écrit / Évaluation", "Travaux Pratiques (TP) / Démarche expérimentale"]
     )
+    modele = st.text_input("Identifiant du modèle Mistral :", value="mistral-small-latest")
+    
+    if st.button("🔎 Vérifier les modèles de ma clé"):
+        try:
+            api_key = st.secrets["MISTRAL_API_KEY"].strip()
+            r = requests.get("https://api.mistral.ai/v1/models", headers={"Authorization": f"Bearer {api_key}"})
+            if r.status_code == 200:
+                liste_modeles = [m["id"] for m in r.json().get("data", [])]
+                st.success(f"{len(liste_modeles)} modèles disponibles :")
+                st.write(liste_modeles)
+            else:
+                st.error(f"Erreur ({r.status_code}) : {r.text}")
+        except Exception as e:
+            st.error(f"Erreur : {e}")
 
 consigne = st.text_area(
     "Collez ici la consigne ou l'extrait de fiche TP à analyser :",
@@ -34,7 +48,7 @@ if st.button("🔍 Analyser les implicites didactiques", type="primary"):
     else:
         with st.spinner("Analyse didactique en cours..."):
             try:
-                api_key = st.secrets["MISTRAL_API_KEY"]
+                api_key = st.secrets["MISTRAL_API_KEY"].strip()
                 
                 prompt_systeme = f"""Tu es un formateur expert en didactique de la physique-chimie intervenant en INSPE (Master MEEF) et en formation continue.
 Contexte : Niveau {niveau} | Type : {type_activite}.
@@ -58,13 +72,13 @@ Donne 2 ou 3 exemples concrets d'erreurs ou de blocages probables d'un élève e
 Termine par une question courte pour interroger l'intention pédagogique de l'enseignant."""
 
                 response = requests.post(
-                    "https://mistral.ai",
+                    "https://api.mistral.ai/v1/chat/completions",
                     headers={
-                        "Authorization": f"Bearer {api_key.strip()}",
+                        "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json"
                     },
                     json={
-                        "model": "mistral-small-latest",
+                        "model": modele.strip(),
                         "messages": [
                             {"role": "system", "content": prompt_systeme},
                             {"role": "user", "content": consigne}
@@ -75,7 +89,7 @@ Termine par une question courte pour interroger l'intention pédagogique de l'en
                 
                 if response.status_code == 200:
                     data = response.json()
-                    st.markdown(data["choices"]["message"]["content"])
+                    st.markdown(data["choices"][0]["message"]["content"])
                 else:
                     st.error(f"Code erreur API : {response.status_code}")
                     st.code(response.text)
