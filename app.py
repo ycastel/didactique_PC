@@ -14,7 +14,7 @@ for cle, defaut in [("reset", 0), ("resultat", ""), ("bo", ""), ("meta", ("", ""
         st.session_state[cle] = defaut
 
 with st.expander("ℹ️ Mode d'emploi et principes didactiques"):
-    st.write("Analyse les implicites d'une consigne en adaptant sa grille au support (Écrit vs TP) et au niveau scolaire (Cycle 4 vs Lycée), avec 3 niveaux d'étayage basés sur des verbes d'action.")
+    st.write("Analyse les implicites d'une consigne en adaptant strictement sa grille au support (Écrit vs TP) et au niveau scolaire (Cycle 4 vs Lycée), sans jamais inventer de données absentes, avec 3 niveaux d'étayage basés sur des verbes d'action.")
 
 mode_profil = st.sidebar.radio("Public / Détail :", ("⚡ Pratique de classe (Équilibré)", "🎓 Analyse approfondie (Formation / INSPE)"))
 st.sidebar.divider()
@@ -54,26 +54,30 @@ if lancer:
     if "Cycle 4" in niveau:
         r_niv = "DISCIPLINE : PHYSIQUE-CHIMIE CYCLE 4 uniquement (interdiction de citer la SVT). Thèmes : Organisation et transformations de la matière, Mouvement, Énergie. Compétences : Pratiquer des démarches scientifiques, S'approprier des outils, Pratiquer des langages. Conversions (mg/g, cL/L) et proportionnalité sont des obstacles légitimes."
     elif "Seconde" in niveau:
-        r_niv = "DISCIPLINE : PHYSIQUE-CHIMIE SECONDE GT uniquement (interdiction de citer la SVT). Compétences exactes du BO : S'approprier (APP), Analyser/Raisonner (ANA), Réaliser (REA), Valider (VAL), Communiquer (COM). Enjeux : concentration en masse, protocole de dissolution/dilution, chiffres significatifs."
+        r_niv = "DISCIPLINE : PHYSIQUE-CHIMIE SECONDE GT uniquement (interdiction de citer la SVT). Compétences exactes du BO : S'approprier (APP : extraire l'info), Analyser/Raisonner (ANA : choisir la formule/démarche), Réaliser (REA : calculer/convertir), Valider (VAL), Communiquer (COM). Enjeux : concentration en masse, protocole de dissolution/dilution, chiffres significatifs."
     else:
-        r_niv = f"DISCIPLINE : PHYSIQUE-CHIMIE {niveau} uniquement (interdiction de citer la SVT). Compétences exactes du BO : S'approprier (APP), Analyser/Raisonner (ANA), Réaliser (REA), Valider (VAL), Communiquer (COM). CALIBRAGE DE NIVEAU : Si l'énoncé fourni est un exercice élémentaire de collège/seconde (simple conversion mg/g, cL/L ou proportionnalité), signale explicitement dès le début qu'il est sous-dimensionné pour le niveau {niveau} et propose des pistes pour l'élever (concentration en quantité de matière, incertitudes-types, protocole expérimental)."
+        r_niv = f"DISCIPLINE : PHYSIQUE-CHIMIE {niveau} uniquement (interdiction de citer la SVT). Compétences exactes du BO : S'approprier (APP : extraire l'info), Analyser/Raisonner (ANA : élaborer la démarche/choisir la loi), Réaliser (REA : effectuer les calculs/conversions), Valider (VAL), Communiquer (COM). CALIBRAGE DE NIVEAU : Si l'énoncé est un exercice élémentaire de collège/seconde (simple conversion ou proportionnalité), signale dès la Section 1 qu'il est sous-dimensionné pour {niveau} et propose des pistes pour l'élever (quantité de matière, incertitudes-types, écart normalisé)."
 
-    r_hallu = "ANTI-HALLUCINATION : N'invente AUCUNE valeur numérique (ni en chiffres comme 310 ou 50, ni en toutes lettres comme 'trois cent dix' ou 'cinquante') absente du texte. Si les documents manquent, écris '[donnée du document]'."
     r_sup = "CONTEXTE ÉCRIT : Critique explicitement l'absence de verbe d'action et la forme interrogative fermée ('...est-elle... ?') qui pousse l'élève à répondre par 'Oui/Non' via son vécu/sens commun au lieu d'une preuve scientifique." if "Exercice" in support else "CONTEXTE TP : Critique l'absence de verbes opératoires, les implicites matériels (verrerie, calibre, témoin, sécurité) et la rupture non explicitée entre observation à la paillasse et modèle théorique."
-    r_verb = "REFORMULATIONS (ZÉRO '?') : Uniquement des verbes d'action (infinitif/impératif). Niveau 1 = UNE SEULE phrase globale ouverte ; Niveau 2 = 2-3 étapes méthodologiques générales ; Niveau 3 = guidage pas à pas univoque sans inventer de valeurs."
+    r_verb = "REFORMULATIONS (ZÉRO '?') : Uniquement des verbes d'action (infinitif/impératif). Niveau 1 = UNE SEULE phrase globale ouverte ; Niveau 2 = 2-3 étapes méthodologiques générales ; Niveau 3 = guidage pas à pas univoque."
 
     if "Pratique" in mode_profil:
-        prompt = f"Formateur expert en didactique PC ({niveau}). {r_niv} {r_hallu} {r_sup} {r_verb} Ne résous jamais l'exercice. Cite les mots exacts. Structure en 4 parties Markdown : ### 1. Compétences officielles de Physique-Chimie engagées ({niveau}) ; ### 2. Analyse langagière et implicite didactique (paragraphe 1 : forme interrogative vs verbe d'action et piège du sens commun ; paragraphe 2 : procédures scientifiques cachées) ; ### 3. Risques de blocage adaptés au niveau {niveau} ; ### 4. Trois niveaux de reformulation avec verbes d'action."
+        prompt = f"Formateur expert en didactique PC ({niveau}). {r_niv} {r_sup} {r_verb} Ne résous jamais l'exercice. Cite les mots exacts. Structure en 4 parties Markdown : ### 1. Compétences officielles de Physique-Chimie engagées ({niveau}) ; ### 2. Analyse langagière et implicite didactique (paragraphe 1 : forme interrogative vs verbe d'action et piège du sens commun ; paragraphe 2 : procédures scientifiques cachées) ; ### 3. Risques de blocage adaptés au niveau {niveau} ; ### 4. Trois niveaux de reformulation avec verbes d'action."
     else:
-        prompt = f"Formateur didactique PC (INSPE). {r_niv} {r_hallu} {r_sup} {r_verb} Ne résous jamais l'exercice. Cite les mots exacts. Structure en 6 parties Markdown : ### 1. Compétences officielles PC ({niveau}) ; ### 2. Clarté cognitive et cadre IGÉSR ; ### 3. Obstacles épistémologiques (Bachelard : sens commun) et registres (Johnstone/Tiberghien) ; ### 4. Contrat didactique (Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) ; ### 5. Gradation d'explicitation avec verbes d'action (vigilance effet Topaze) ; ### 6. Nuances, contre-arguments légitimes et question réflexive."
+        prompt = f"Formateur didactique PC (INSPE). {r_niv} {r_sup} {r_verb} Ne résous jamais l'exercice. Cite les mots exacts. Structure en 6 parties Markdown : ### 1. Compétences officielles PC ({niveau}) ; ### 2. Clarté cognitive et cadre IGÉSR ; ### 3. Obstacles épistémologiques (Bachelard : sens commun) et registres (Johnstone/Tiberghien) ; ### 4. Contrat didactique (Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) ; ### 5. Gradation d'explicitation avec verbes d'action (vigilance effet Topaze) ; ### 6. Nuances, contre-arguments légitimes et question réflexive."
+
+    a_des_chiffres = any(c.isdigit() for c in contenu_texte)
+    verrou_strict = ""
+    if not image_b64 and not a_des_chiffres:
+        verrou_strict = "\n\n[CONTRAINTE ABSOLUE : Cet énoncé ne contient AUCUN chiffre et AUCUN document annexe. N'écris AUCUN chiffre (interdiction d'utiliser les caractères 0 à 9 dans les consignes réécrites) et ne devine pas le contenu d'une étiquette ou d'un tableau absent (ne parle ni de sodium, ni de g/L, ni d'intervalle précis). Base-toi UNIQUEMENT sur les mots exacts écrits ci-dessus.]"
 
     messages = [{"role": "system", "content": prompt}]
-    if not image_b64:
+    if image_b64:
+        modele = "gemma-4-31b-it"
+        messages.append({"role": "user", "content": [{"type": "text", "text": "Analyse uniquement les éléments visibles sur cette image sans inventer de données absentes :"}, {"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"}]})
+    else:
         modele = "mistral-small-3-2-24b-instruct-2506"
-        note_contexte = f"\n\n[RAPPEL STRICT : Niveau={niveau}. En lycée, ANA = élaborer la démarche/choisir la formule, REA = effectuer les calculs/conversions. Si l'énoncé ne contient aucun chiffre, interdiction absolue d'écrire 310, 50 ou 0,50-0,70. Si l'exercice ne porte que sur des conversions simples en Spécialité PC, signale en Section 1 qu'il est sous-dimensionné pour ce niveau.]"
-        messages.append({"role": "user", "content": contenu_texte[:12000] + note_contexte})
-
-        messages.append({"role": "user", "content": contenu_texte[:12000]})
+        messages.append({"role": "user", "content": contenu_texte[:12000] + verrou_strict})
 
     with st.spinner("Analyse didactique en cours via Albert API..."):
         url = "https://" + "albert.api.etalab.gouv.fr" + "/v1/chat/completions"
