@@ -65,13 +65,14 @@ if lancer:
     messages = list()
     messages.append({"role": "system", "content": prompt})
 
-    modele = "albert-large"
     if image_b64:
+        modele = "gemma-4-31b-it"
         contenu_visuel = list()
         contenu_visuel.append({"type": "text", "text": "Analyse les implicites de ce document :"})
         contenu_visuel.append({"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"})
         messages.append({"role": "user", "content": contenu_visuel})
     else:
+        modele = "mistral-small-3-2-24b-instruct-2506"
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
     with st.spinner("Analyse didactique en cours via Albert API..."):
@@ -112,7 +113,3 @@ if lancer:
             st.download_button("📘 Télécharger en Word (.docx)", data=buf, file_name=f"analyse_PC_{datetime.now().strftime('%Y%m%d_%H%M')}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         else:
             st.error(f"Erreur Albert API ({rep.status_code}) : {rep.text}")
-            rep_mod = requests.get(base_url + "/models", headers=headers_api)
-            if rep_mod.status_code == 200:
-                liste_m = [m.get("id") for m in rep_mod.json().get("data", list())]
-                st.info("Modèles disponibles avec votre clé Albert : " + ", ".join(liste_m))
