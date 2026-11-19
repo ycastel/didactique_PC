@@ -72,7 +72,7 @@ if lancer:
         contenu_visuel.append({"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"})
         messages.append({"role": "user", "content": contenu_visuel})
     else:
-        modele = "mistral-large-latest"
+        modele = "mistral-small-latest"
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
     with st.spinner("Analyse didactique en cours..."):
