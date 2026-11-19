@@ -68,11 +68,11 @@ if lancer:
         prompt = f"Formateur didactique PC (INSPE). {r_niv} {r_hallu} {r_sup} {r_verb} Ne résous jamais l'exercice. Cite les mots exacts. Structure en 6 parties Markdown : ### 1. Compétences officielles PC ({niveau}) ; ### 2. Clarté cognitive et cadre IGÉSR ; ### 3. Obstacles épistémologiques (Bachelard : sens commun) et registres (Johnstone/Tiberghien) ; ### 4. Contrat didactique (Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) ; ### 5. Gradation d'explicitation avec verbes d'action (vigilance effet Topaze) ; ### 6. Nuances, contre-arguments légitimes et question réflexive."
 
     messages = [{"role": "system", "content": prompt}]
-    if image_b64:
-        modele = "gemma-4-31b-it"
-        messages.append({"role": "user", "content": [{"type": "text", "text": "Analyse les implicites PC de ce document sans inventer de données :"}, {"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"}]})
-    else:
+    if not image_b64:
         modele = "mistral-small-3-2-24b-instruct-2506"
+        note_contexte = f"\n\n[RAPPEL STRICT : Niveau={niveau}. En lycée, ANA = élaborer la démarche/choisir la formule, REA = effectuer les calculs/conversions. Si l'énoncé ne contient aucun chiffre, interdiction absolue d'écrire 310, 50 ou 0,50-0,70. Si l'exercice ne porte que sur des conversions simples en Spécialité PC, signale en Section 1 qu'il est sous-dimensionné pour ce niveau.]"
+        messages.append({"role": "user", "content": contenu_texte[:12000] + note_contexte})
+
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
     with st.spinner("Analyse didactique en cours via Albert API..."):
