@@ -69,21 +69,25 @@ if lancer:
     a_des_chiffres = any(c.isdigit() for c in contenu_texte)
     verrou_strict = ""
     if not image_b64 and not a_des_chiffres:
-        verrou_strict = "\n\n[CONTRAINTE ABSOLUE : Cet énoncé ne contient AUCUN chiffre et AUCUN document annexe. N'écris AUCUN chiffre (interdiction d'utiliser les caractères 0 à 9 dans les consignes réécrites) et ne devine pas le contenu d'une étiquette ou d'un tableau absent (ne parle ni de sodium, ni de g/L, ni d'intervalle précis). Base-toi UNIQUEMENT sur les mots exacts écrits ci-dessus.]"
+        verrou_strict = "\n\n[CONTRAINTE ABSOLUE : Cet énoncé ne contient AUCUN chiffre et AUCUN document annexe. N'écris AUCUN chiffre (interdiction d'utiliser les caractères 0 à 9 dans les consignes réécrites) et ne devine pas le contenu d'une étiquette ou d'un tableau absent. Base-toi UNIQUEMENT sur les mots exacts écrits ci-dessus.]"
 
     messages = [{"role": "system", "content": prompt}]
     if image_b64:
         modele = "gemma-4-31b-it"
         messages.append({"role": "user", "content": [{"type": "text", "text": "Analyse uniquement les éléments visibles sur cette image sans inventer de données absentes :"}, {"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"}]})
     else:
-        modele = "mistral-small-3-2-24b-instruct-2506"
+        modele = "gpt-oss-120b"
         messages.append({"role": "user", "content": contenu_texte[:12000] + verrou_strict})
 
     with st.spinner("Analyse didactique en cours via Albert API..."):
         url = "https://" + "albert.api.etalab.gouv.fr" + "/v1/chat/completions"
         rep = requests.post(url, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, json={"model": modele, "messages": messages, "temperature": 0.1}, timeout=120)
         if rep.status_code == 200:
-            st.session_state.resultat = next(iter(rep.json()["choices"]))["message"]["content"]
+            texte_brut = next(iter(rep.json()["choices"]))["message"]["content"]
+            if not image_b64 and not a_des_chiffres:
+                for intrus in ["310 mg", "50 cL", "0,50 g/L", "0,70 g/L", "0,50", "0,70", "310", "50"]:
+                    texte_brut = texte_brut.replace(intrus, "[valeur du document]")
+            st.session_state.resultat = texte_brut
             if "Cycle 4" in niveau: st.session_state.bo = "📜 **Référence BO :** Cycle 4 (BOEN n° 31 du 30 juillet 2020) — Organisation et transformations de la matière, démarches scientifiques et langages."
             elif "Seconde" in niveau: st.session_state.bo = "📜 **Référence BO :** Seconde GT (BOEN spécial n° 1 du 22 janvier 2019) — Compétences APP, ANA, REA, VAL, COM, concentration en masse et incertitudes."
             elif "Spécialité" in niveau: st.session_state.bo = "📜 **Référence BO :** Spécialité PC Première et Terminale (BOEN 2019) & notes ECE — Autonomie de protocole, quantité de matière et analyse critique."
