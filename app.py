@@ -6,7 +6,7 @@ from docx import Document
 import base64
 import io
 
-st.set_page_config(page_title="Didactique PC", page_icon="🔬", layout="wide")
+st.set_page_config(page_title="Didactique PC - Albert API", page_icon="🔬", layout="wide")
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 
 with st.expander("ℹ️ Mode d'emploi et principes didactiques"):
@@ -48,7 +48,7 @@ if lancer:
         st.warning("⚠️ Saisissez une consigne ou chargez un fichier.")
         st.stop()
 
-    api_key = st.secrets["MISTRAL_API_KEY"].strip()
+    api_key = st.secrets["ALBERT_API_KEY"].strip()
 
     if support == "Exercice / Évaluation":
         consigne_support = "CONTEXTE EXCLUSIF : EXERCICE ÉCRIT OU ÉVALUATION SUR TABLE (aucune manipulation). Analyse uniquement : la compréhension de l'énoncé écrit, l'extraction d'informations dans les documents, les verbes opérateurs à protocole caché (justifier, déduire, commenter), le passage texte/schéma/formule/graphique, et les attentes rédactionnelles implicites (expression littérale avant calcul, unités, chiffres significatifs). Interdiction de parler de paillasse, de verrerie ou de TP."
@@ -65,21 +65,21 @@ if lancer:
     messages = list()
     messages.append({"role": "system", "content": prompt})
 
+    modele = "albert-large"
     if image_b64:
-        modele = "pixtral-12b-latest"
         contenu_visuel = list()
         contenu_visuel.append({"type": "text", "text": "Analyse les implicites de ce document :"})
         contenu_visuel.append({"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"})
         messages.append({"role": "user", "content": contenu_visuel})
     else:
-        modele = "mistral-small-latest"
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
-    with st.spinner("Analyse didactique en cours..."):
-        url = "https://" + "api.mistral.ai" + "/v1/chat/completions"
+    with st.spinner("Analyse didactique en cours via Albert API..."):
+        base_url = "https://" + "albert.api.etalab.gouv.fr" + "/v1"
+        headers_api = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         rep = requests.post(
-            url,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            base_url + "/chat/completions",
+            headers=headers_api,
             json={"model": modele, "messages": messages, "temperature": 0.2},
             timeout=120
         )
@@ -111,4 +111,8 @@ if lancer:
             buf.seek(0)
             st.download_button("📘 Télécharger en Word (.docx)", data=buf, file_name=f"analyse_PC_{datetime.now().strftime('%Y%m%d_%H%M')}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         else:
-            st.error(f"Erreur Mistral ({rep.status_code}) : {rep.text}")
+            st.error(f"Erreur Albert API ({rep.status_code}) : {rep.text}")
+            rep_mod = requests.get(base_url + "/models", headers=headers_api)
+            if rep_mod.status_code == 200:
+                liste_m = [m.get("id") for m in rep_mod.json().get("data", list())]
+                st.info("Modèles disponibles avec votre clé Albert : " + ", ".join(liste_m))
