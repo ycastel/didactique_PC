@@ -9,6 +9,9 @@ import io
 st.set_page_config(page_title="Didactique PC - Albert API", page_icon="🔬", layout="wide")
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 
+if "reset" not in st.session_state:
+    st.session_state.reset = 0
+
 with st.expander("ℹ️ Mode d'emploi et principes didactiques"):
     st.write("Cet outil analyse les implicites d'une consigne en adaptant strictement sa grille au support (Exercice écrit vs TP expérimental). Les reformulations bannissent les formes interrogatives au profit de verbes d'action univoques.")
 
@@ -17,12 +20,13 @@ st.sidebar.divider()
 niveau = st.sidebar.selectbox("Niveau :", ("Collège (Cycle 4)", "Lycée Général (Seconde)", "Lycée Général (Spécialité PC)", "Lycée Technologique (STL / STI2D)"))
 support = st.sidebar.radio("Support :", ("Exercice / Évaluation", "TP / Démarche expérimentale / ECE"))
 
-texte = st.text_area("1. Collez une consigne :", height=120, placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole permettant de vérifier si l'eau du robinet contient des ions chlorure, puis conclure.")
-fichier = st.file_uploader("2. OU importez un fichier (PDF, PNG, JPG) :")
+texte = st.text_area("1. Collez une consigne :", height=120, key=f"texte_{st.session_state.reset}", placeholder="Exemple : À partir du matériel sur la paillasse, proposer un protocole permettant de vérifier si l'eau du robinet contient des ions chlorure, puis conclure.")
+fichier = st.file_uploader("2. OU importez un fichier (PDF, PNG, JPG) :", key=f"fichier_{st.session_state.reset}")
 
 col1, col2 = st.columns(2)
 lancer = col1.button("🔍 Lancer l'analyse", type="primary", use_container_width=True)
 if col2.button("🔄 Nouvelle analyse", use_container_width=True):
+    st.session_state.reset += 1
     st.rerun()
 
 if lancer:
