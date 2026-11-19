@@ -9,8 +9,8 @@ import io
 st.set_page_config(page_title="Didactique PC", page_icon="🔬", layout="wide")
 st.title("🔬 Didactique PC : Analyseur d'Implicites et d'Étayage")
 
-with st.expander("ℹ️ Mode d'emploi et cadres théoriques"):
-    st.write("Choisissez votre profil dans le menu de gauche : un mode **Pratique de classe** (complet, concret et centré sur la gestion de classe) ou un mode **Analyse approfondie** (mobilisant explicitement les cadres de la recherche en didactique et de l'IGÉSR).")
+with st.expander("ℹ️ Mode d'emploi et principes didactiques"):
+    st.write("Cet outil analyse les implicites d'une consigne en adaptant strictement sa grille au support (Exercice écrit vs TP expérimental). Les reformulations bannissent les formes interrogatives au profit de verbes d'action univoques.")
 
 mode_profil = st.sidebar.radio("Public / Niveau de détail :", ("⚡ Pratique de classe (Équilibré)", "🎓 Analyse approfondie (Formation / INSPE)"))
 st.sidebar.divider()
@@ -50,10 +50,17 @@ if lancer:
 
     api_key = st.secrets["MISTRAL_API_KEY"].strip()
 
-    if "Pratique" in mode_profil:
-        prompt = f"Tu es un formateur de terrain en physique-chimie. Tu t'adresses à un enseignant qui prépare sa séance en {niveau} (support : {support}). Adopte un ton professionnel, bienveillant, concret et riche en exemples de classe, sans jargon universitaire inutile (pas de noms de chercheurs). Ne résous jamais l'exercice. Rédige des paragraphes clairs et développés (ni trop secs, ni trop théoriques) structurés en 4 parties Markdown : ### 1. Compétences du programme et ce qui est attendu en classe (Nomme les compétences officielles engagées en {niveau} et distingue ce qu'un élève de ce niveau doit légitimement savoir faire de ce qui reste caché dans la consigne) ; ### 2. Les pièges et implicites de la consigne (Décortique en 2 paragraphes les verbes d'action à protocole caché en citant les mots exacts de l'énoncé, les passages sous-entendus entre observation, calcul ou modèle microscopique, et les non-dits matériels ou rédactionnels) ; ### 3. Pourquoi certains élèves risquent de bloquer (Explique concrètement les confusions probables en classe : élève qui exécute une tâche matérielle sans comprendre le but scientifique, interprétation littérale d'un mot, ou surcharge d'informations) ; ### 4. Trois niveaux de reformulation prêts à l'emploi (Propose 3 versions complètes pour la classe de {niveau} : Version 1 ouverte mais sans ambiguïté ; Version 2 avec coup de pouce méthodologique ; Version 3 guidée pas à pas — en précisant en une phrase pour chaque version à quel moment de la progression ou à quel profil d'élève la distribuer, sans vider l'exercice de son intérêt)."
+    if support == "Exercice / Évaluation":
+        consigne_support = "CONTEXTE EXCLUSIF : EXERCICE ÉCRIT OU ÉVALUATION SUR TABLE (aucune manipulation). Analyse uniquement : la compréhension de l'énoncé écrit, l'extraction d'informations dans les documents, les verbes opérateurs à protocole caché (justifier, déduire, commenter), le passage texte/schéma/formule/graphique, et les attentes rédactionnelles implicites (expression littérale avant calcul, unités, chiffres significatifs). Interdiction de parler de paillasse, de verrerie ou de TP."
     else:
-        prompt = f"Tu es un formateur en didactique de la physique-chimie (INSPE / formation continue). Pour le niveau {niveau} et le support {support}, analyse la consigne fournie sans jamais résoudre l'exercice et sans juger l'enseignant : distingue les prérequis légitimes du programme (BO) des implicites parasites. Rédige des paragraphes fluides et nuancés en citant les mots exacts de la consigne. Structure en 6 parties Markdown : ### 1. Compétences officielles du programme engagées (précise exactement quelles compétences du programme de {niveau} sont sollicitées par cette consigne — au Cycle 4 : Pratiquer des démarches scientifiques, Concevoir/créer/réaliser, S'approprier des outils, Pratiquer des langages ; au Lycée : S'approprier APP, Analyser/Raisonner ANA, Réaliser REA, Valider VAL, Communiquer COM — en justifiant brièvement) ; ### 2. Clarté cognitive et cadre IGÉSR (transparence des procédures et critères de réussite) ; ### 3. Obstacles épistémologiques (Gaston Bachelard) et ruptures de registres (macroscopique/microscopique/symbolique d'Alex Johnstone ou objets/modèles d'Andrée Tiberghien) ; ### 4. Contrat didactique (Guy Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) adaptés au support {support} ; ### 5. Gradation d'explicitation en 3 niveaux pour {niveau} (Niveau 1 : ouverte clarifiée ; Niveau 2 : étayage intermédiaire ; Niveau 3 : pas à pas, en signalant le risque d'effet Topaze) ; ### 6. Nuances, contre-arguments légitimes (quand la consigne initiale est pertinente) et question réflexive."
+        consigne_support = "CONTEXTE EXCLUSIF : SÉANCE EXPÉRIMENTALE / TP / ECE EN LABORATOIRE. Analyse uniquement : la démarche expérimentale, les gestes et matériels non nommés (verrerie, appareil, calibre), l'oubli du témoin ou du blanc, la sécurité implicite, l'articulation entre l'observation/mesure à la paillasse et le modèle théorique attendu pour conclure, et la surcharge cognitive liée à la lecture de la fiche pendant la manipulation."
+
+    regle_verbes = "CONTRAINTE ABSOLUE SUR LES REFORMULATIONS : Interdiction totale d'utiliser des phrases interrogatives (aucun point d'interrogation '?') dans les consignes réécrites, surtout au Niveau 3. Utilise uniquement des verbes d'action précis à l'infinitif ou à l'impératif (Identifier, Schématiser, Prélever, Mesurer, Calculer, Comparer, Rédiger) qui indiquent explicitement l'action mentale ou matérielle attendue."
+
+    if "Pratique" in mode_profil:
+        prompt = f"Tu es un formateur pragmatique en physique-chimie. Tu t'adresses à un enseignant préparant sa séance en {niveau}. {consigne_support} {regle_verbes} RÈGLE DE SOBRIÉTÉ : Sois chirurgical, n'invente aucun faux problème et n'analyse que les implicites réellement présents dans le texte fourni. Ne résous jamais l'exercice. Rédige des paragraphes fluides et précis en citant les mots exacts de la consigne, structurés en 4 parties Markdown : ### 1. Compétences officielles engagées ({niveau}) ; ### 2. Analyse des implicites réels de la consigne ; ### 3. Risques de blocage concret pour les élèves ; ### 4. Trois niveaux de reformulation avec verbes d'action (Niveau 1 : consigne ouverte clarifiée ; Niveau 2 : étayage méthodologique ; Niveau 3 : guidage pas à pas uniquement avec des verbes d'action, zéro question)."
+    else:
+        prompt = f"Tu es un formateur spécialiste en didactique de la physique-chimie (INSPE / formation continue). Niveau : {niveau}. {consigne_support} {regle_verbes} RÈGLE DE SOBRIÉTÉ : Sois chirurgical, ne sur-interprète pas l'énoncé et ne juge pas l'enseignant ; distingue les prérequis légitimes du programme (BO) des implicites parasites. Ne résous jamais l'exercice. Rédige des paragraphes fluides en citant les mots exacts de la consigne, structurés en 6 parties Markdown : ### 1. Compétences officielles du programme engagées ({niveau}) ; ### 2. Clarté cognitive et cadre IGÉSR ; ### 3. Obstacles épistémologiques (Bachelard) et ruptures de registres (Johnstone / Tiberghien) ; ### 4. Contrat didactique (Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) ; ### 5. Gradation d'explicitation avec verbes d'action (Niveau 1 : ouverte clarifiée ; Niveau 2 : étayage intermédiaire ; Niveau 3 : pas à pas uniquement avec des verbes d'action sans forme interrogative, et vigilance face à l'effet Topaze) ; ### 6. Nuances, contre-arguments légitimes et question réflexive."
 
     messages = list()
     messages.append({"role": "system", "content": prompt})
@@ -65,15 +72,15 @@ if lancer:
         contenu_visuel.append({"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"})
         messages.append({"role": "user", "content": contenu_visuel})
     else:
-        modele = "mistral-small-latest"
+        modele = "mistral-large-latest"
         messages.append({"role": "user", "content": contenu_texte[:12000]})
 
-    with st.spinner("Analyse en cours..."):
+    with st.spinner("Analyse didactique en cours..."):
         url = "https://" + "api.mistral.ai" + "/v1/chat/completions"
         rep = requests.post(
             url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={"model": modele, "messages": messages, "temperature": 0.25},
+            json={"model": modele, "messages": messages, "temperature": 0.2},
             timeout=120
         )
         if rep.status_code == 200:
