@@ -13,7 +13,7 @@ if "reset" not in st.session_state:
     st.session_state.reset = 0
 
 with st.expander("ℹ️ Mode d'emploi et principes didactiques"):
-    st.write("Cet outil analyse les implicites d'une consigne en adaptant strictement sa grille au support (Exercice écrit vs TP expérimental). Il repère les questions fermées propices aux réponses de sens commun, n'invente jamais de données absentes et propose 3 niveaux d'étayage basés sur des verbes d'action.")
+    st.write("Cet outil analyse les implicites langagiers, épistémologiques et méthodologiques d'une consigne en physique-chimie, puis propose 3 niveaux d'étayage fondés sur des verbes d'action.")
 
 mode_profil = st.sidebar.radio("Public / Niveau de détail :", ("⚡ Pratique de classe (Équilibré)", "🎓 Analyse approfondie (Formation / INSPE)"))
 st.sidebar.divider()
@@ -54,19 +54,19 @@ if lancer:
 
     api_key = st.secrets["ALBERT_API_KEY"].strip()
 
-    regle_anti_hallucination = "RÈGLE ANTI-INVENTION ABSOLUE : N'invente JAMAIS de valeurs numériques, de volumes, de masses ou de documents qui ne figurent pas explicitement dans l'entrée fournie. Si la consigne fait référence à un document ou une étiquette non fourni(e), indique explicitement '(documents annexes non fournis)' et utilise des crochets génériques comme [valeur du document] sans jamais inventer de chiffres."
+    regle_anti_hallucination = "INTERDICTION STRICTE D'INVENTER DES DONNÉES : Ne cite AUCUN nombre, AUCUNE plage de valeurs (interdiction d'écrire 0,50 g/L ou tout autre chiffre absent du texte) et AUCUNE donnée qui n'est pas écrite mot pour mot dans l'entrée fournie. Si les documents annexes sont absents, écris '[documents annexes non fournis]'."
 
     if support == "Exercice / Évaluation":
-        consigne_support = "CONTEXTE EXCLUSIF : EXERCICE ÉCRIT OU ÉVALUATION SUR TABLE (aucune manipulation). Analyse : la forme grammaticale (repère si une question fermée ou interrogative incite l'élève à répondre par son vécu ou le sens commun au lieu d'une démarche scientifique), l'extraction de données dans les documents, les verbes opérateurs à protocole caché et les attentes rédactionnelles implicites. Interdiction de parler de paillasse, de verrerie ou de TP."
+        consigne_support = "CONTEXTE : EXERCICE ÉCRIT / ÉVALUATION. Analyse en priorité la syntaxe de la consigne : critique explicitement l'absence de verbe d'action et l'usage d'une forme interrogative fermée ('Est-ce que...', '...est-elle... ?') qui pousse l'élève à répondre par 'Oui/Non' en mobilisant son vécu quotidien ou le sens commun au lieu d'une démarche scientifique. Explique l'implicite du contrat didactique (ce que le professeur attend comme preuve scientifique sans le formuler)."
     else:
-        consigne_support = "CONTEXTE EXCLUSIF : SÉANCE EXPÉRIMENTALE / TP / ECE EN LABORATOIRE. Analyse : la démarche expérimentale, les gestes et matériels non nommés (verrerie, appareil, calibre), l'oubli du témoin ou du blanc, la sécurité implicite, l'articulation entre l'observation à la paillasse et le modèle théorique attendu pour conclure, et la surcharge cognitive pendant la manipulation."
+        consigne_support = "CONTEXTE : SÉANCE EXPÉRIMENTALE / TP / ECE. Analyse en priorité les implicites de la démarche expérimentale : absence de verbes d'action opératoires, gestes et matériels non nommés (verrerie, appareil, calibre), oubli du témoin ou du blanc, sécurité implicite, et rupture non explicitée entre l'observation à la paillasse et le modèle théorique."
 
-    regle_verbes = "CONTRAINTE SUR LES 3 NIVEAUX DE REFORMULATION (ZÉRO QUESTION '?') : Bannir toute phrase interrogative. Utilise uniquement des verbes d'action précis à l'infinitif ou à l'impératif. Respecte strictement cette progression : Niveau 1 (Consigne ouverte clarifiée) = UNE SEULE phrase globale avec verbe d'action qui préserve l'autonomie de la tâche complexe sans dévoiler les étapes de calcul ; Niveau 2 (Étayage méthodologique) = 2 ou 3 étapes indiquant la démarche générale (extraire, calculer, comparer) sans donner les formules ni les facteurs de conversion ; Niveau 3 (Guidage pas à pas) = décomposition en actions élémentaires univoques avec verbes d'action."
+    regle_verbes = "CONTRAINTE SUR LES 3 REFORMULATIONS (ZÉRO '?') : Interdiction totale de phrases interrogatives. Utilise uniquement des verbes d'action précis à l'infinitif ou à l'impératif. Niveau 1 = UNE SEULE phrase globale avec verbe d'action préservant l'autonomie de la tâche complexe ; Niveau 2 = 2 ou 3 étapes méthodologiques générales avec verbes d'action ; Niveau 3 = guidage pas à pas en actions élémentaires univoques."
 
     if "Pratique" in mode_profil:
-        prompt = f"Tu es un formateur pragmatique en physique-chimie. Tu t'adresses à un enseignant préparant sa séance en {niveau}. {regle_anti_hallucination} {consigne_support} {regle_verbes} Ne résous jamais l'exercice. Rédige des paragraphes fluides et précis en citant les mots exacts de la consigne, structurés en 4 parties Markdown : ### 1. Compétences officielles engagées ({niveau}) ; ### 2. Analyse des implicites (forme de la question, appel au sens commun vs démarche scientifique, étapes cachées) ; ### 3. Risques de blocage ou de réponse hors-sujet pour les élèves ; ### 4. Trois niveaux de reformulation avec verbes d'action."
+        prompt = f"Tu es un formateur expert en didactique de la physique-chimie. Tu t'adresses à un enseignant en {niveau}. {regle_anti_hallucination} {consigne_support} {regle_verbes} Ne résous jamais l'exercice. Rédige des paragraphes fluides et précis en citant les mots exacts de la consigne, structurés en 4 parties Markdown : ### 1. Compétences officielles engagées ({niveau}) ; ### 2. Analyse langagière et implicite didactique (Consacre un premier paragraphe à critiquer la forme grammaticale — forme interrogative vs absence de verbe d'action — et le piège du sens commun/vécu quotidien ; puis un second paragraphe sur les procédures scientifiques cachées derrière l'énoncé, sans lister de calculs) ; ### 3. Risques de blocage ou de réponse hors-sujet pour les élèves ; ### 4. Trois niveaux de reformulation avec verbes d'action."
     else:
-        prompt = f"Tu es un formateur spécialiste en didactique de la physique-chimie (INSPE / formation continue). Niveau : {niveau}. {regle_anti_hallucination} {consigne_support} {regle_verbes} Distingue les prérequis légitimes du programme (BO) des implicites parasites, sans juger l'enseignant. Ne résous jamais l'exercice. Rédige des paragraphes fluides en citant les mots exacts de la consigne, structurés en 6 parties Markdown : ### 1. Compétences officielles du programme engagées ({niveau}) ; ### 2. Clarté cognitive et cadre IGÉSR (forme interrogative vs verbe d'action, critères de réussite) ; ### 3. Obstacles épistémologiques (Bachelard : sens commun et vécu quotidien) et ruptures de registres (Johnstone / Tiberghien) ; ### 4. Contrat didactique (Brousseau), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) ; ### 5. Gradation d'explicitation en 3 niveaux avec verbes d'action (et vigilance face à l'effet Topaze) ; ### 6. Nuances, contre-arguments légitimes et question réflexive."
+        prompt = f"Tu es un formateur spécialiste en didactique de la physique-chimie (INSPE / formation continue). Niveau : {niveau}. {regle_anti_hallucination} {consigne_support} {regle_verbes} Distingue les prérequis légitimes du programme (BO) des implicites parasites, sans juger l'enseignant. Ne résous jamais l'exercice. Rédige des paragraphes fluides en citant les mots exacts de la consigne, structurés en 6 parties Markdown : ### 1. Compétences officielles du programme engagées ({niveau}) ; ### 2. Clarté cognitive et cadre IGÉSR (critique de la forme interrogative, absence de verbe d'action opérateur et critères de réussite invisibles) ; ### 3. Obstacles épistémologiques (Bachelard : appel au sens commun et au vécu quotidien) et ruptures de registres (Johnstone / Tiberghien) ; ### 4. Contrat didactique (Brousseau : décalage entre la question posée et l'attente scientifique réelle), malentendus socio-cognitifs (Bautier & Rayou) et charge cognitive (Sweller) ; ### 5. Gradation d'explicitation en 3 niveaux avec verbes d'action (et vigilance face à l'effet Topaze) ; ### 6. Nuances, contre-arguments légitimes et question réflexive."
 
     messages = list()
     messages.append({"role": "system", "content": prompt})
@@ -74,7 +74,7 @@ if lancer:
     if image_b64:
         modele = "gemma-4-31b-it"
         contenu_visuel = list()
-        contenu_visuel.append({"type": "text", "text": "Analyse les implicites de ce document sans inventer de données absentes de l'image :"})
+        contenu_visuel.append({"type": "text", "text": "Analyse les implicites langagiers et didactiques de ce document sans inventer de chiffres absents de l'image :"})
         contenu_visuel.append({"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"})
         messages.append({"role": "user", "content": contenu_visuel})
     else:
@@ -87,7 +87,7 @@ if lancer:
         rep = requests.post(
             base_url + "/chat/completions",
             headers=headers_api,
-            json={"model": modele, "messages": messages, "temperature": 0.15},
+            json={"model": modele, "messages": messages, "temperature": 0.1},
             timeout=120
         )
         if rep.status_code == 200:
